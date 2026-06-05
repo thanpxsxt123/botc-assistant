@@ -744,15 +744,42 @@
   }
 
   function handleIncomingMsg(msg) {
-    // ดักฟังว่ามีเสียงยกมือ "โหวต" สวนขึ้นมาจากเครื่องผู้เล่นฝั่ง `botc-player.html` คนไหนหรือไม่
-    if (msg.type === 'vote' && msg.player) {
-      // ตรวจสอบว่าผู้เล่นคนนั้นมีตัวตนและยังไม่ได้กดโหวตซ้ำในคดีปัจจุบัน
-      if (!gameState.votes.includes(msg.player)) {
-        gameState.votes.push(msg.player);
+    console.log("📥 ST ได้รับข้อมูล:", msg);
+
+    // ดักฟังผลโหวตที่ผู้เล่นยิงสวนขึ้นมา
+    if ((msg.type === 'vote' || msg.event === 'vote')) {
+      const pName = msg.player || (msg.data ? msg.data.player : null);
+      if (!pName) return;
+
+      if (!gameState.votes.includes(pName)) {
+        gameState.votes.push(pName);
         renderVoteTracker();
-        logEvent('vote', `🗳️ ผู้เล่น [${msg.player}] ยกมือลงคะแนนโหวตในคดีเวทีกลาง`);
+        logEvent('vote', `🗳️ ผู้เล่น [${pName}] ยกมือลงคะแนนโหวต`);
+        
+        // ส่งอัปเดตกระจายสเตทใหม่ให้ผู้เล่นคนอื่นๆ เห็นเม็ดชิปชื่อคนโหวตพร้อมกัน
+        broadcastState();
       }
     }
+  }
+
+  function broadcastState() {
+    // 🔄 ปรับให้ส่งครอบด้วยโครงแบริเออร์ event และ data ตามที่หลังบ้าน routes.py ต้องการ
+    const payload = {
+      event: 'state_update',
+      data: {
+        phase: gameState.phase,
+        round: gameState.round,
+        players: gameState.players.map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          alive: p.alive 
+        })),
+        nomination: gameState.nomination,
+        votes: gameState.votes,
+        votesNeeded: gameState.votesNeeded
+      }
+    };
+    sendWS(payload);
   }
 
   function broadcastState() {
