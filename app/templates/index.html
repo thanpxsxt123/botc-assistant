@@ -41,6 +41,7 @@
   .btn {
     width: 100%; padding: 12px; border-radius: 6px; font-family: 'Cinzel', serif; font-size: 10px;
     letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+    line-height: 1.4;
   }
   .btn-primary { background: rgba(124,92,191,0.2); border-color: rgba(124,92,191,0.4); color: var(--purple-bright); }
   .btn-primary:hover { background: rgba(124,92,191,0.35); }
@@ -64,7 +65,7 @@
     <input type="text" id="roomCode" placeholder="เช่น: DEMO, MAFIA7" oninput="this.value = this.value.toUpperCase()">
   </div>
 
-  <div class="form-group" id="nameField">
+  <div class="form-group">
     <label>ชื่อของคุณ (Your Name)</label>
     <input type="text" id="playerName" placeholder="พิมพ์ชื่อเล่นในวงเกมของคุณ...">
   </div>
@@ -78,18 +79,19 @@
 </div>
 
 <script>
+// 🛠️ จุดสำคัญที่แก้ไข: ฟังก์ชันยิงหน้าจอแยกไปตามเส้นทางในหลังบ้าน (main.py) พร้อมแนบตัวแปรห้อง
 function entryRoute(mode) {
   const room = document.getElementById('roomCode').value.trim().toUpperCase();
   const name = document.getElementById('playerName').value.trim();
 
-  if (!room) { alert('กรุณากรอกรหัสห้องก่อนครับ'); return; }
+  if (!room) { alert('กรุณากรอกรหัสห้อง (Room Code) ก่อนครับ'); return; }
 
   if (mode === 'player') {
     if (!name) { alert('ผู้เล่นต้องระบุชื่อเล่นก่อนเข้าห้องครับ'); return; }
-    // วิ่งไปหน้าผู้เล่นพร้อมส่งตัวแปรผ่าน Query String
+    // วิ่งไปหน้าผู้เล่นที่แก้ใหม่ (/player) พร้อมส่งรหัสห้องและชื่อทาง URL
     window.location.href = `/player?room=${room}&name=${encodeURIComponent(name)}`;
   } else if (mode === 'storyteller') {
-    // วิ่งไปหน้า Storyteller เพื่อควบคุมห้องนั้น
+    // วิ่งไปหน้า Storyteller (/storyteller) เพื่อควบคุมห้องนั้นๆ
     window.location.href = `/storyteller?room=${room}`;
   }
 }
