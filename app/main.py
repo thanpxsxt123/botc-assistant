@@ -1,15 +1,14 @@
 import os
-import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 from config.config import Config
 from app.api.routes import router as api_router
-from app.api.websocket import manager
+from app.api.websocket import manager  # ดึง manager ตัวจริงของคุณมาใช้งาน
 
 app = FastAPI(title=Config.APP_NAME, version=Config.VERSION)
 
-# ใช้แอดเดรสสัมบูรณ์ชี้ไปยังโฟลเดอร์ templates
+# Use absolute path for templates
 base_dir = os.path.dirname(os.path.abspath(__file__))
 template_dir = os.path.join(base_dir, "templates")
 env = Environment(loader=FileSystemLoader(template_dir))
@@ -29,7 +28,7 @@ async def get_index(request: Request):
 @app.get("/player")
 async def get_player(request: Request):
     try:
-        # 🟢 เพิ่มหน้าจอสำหรับผู้เล่นเข้ามาเล่นในห้อง
+        # เปิดหน้าจอสำหรับผู้เล่น (botc-player.html)
         template = env.get_template("botc-player.html")
         content = template.render(request=request)
         return HTMLResponse(content=content)
@@ -42,7 +41,7 @@ async def get_player(request: Request):
 @app.get("/storyteller")
 async def get_storyteller(request: Request):
     try:
-        # 👑 ลิงก์ไปยังไฟล์บอร์ดควบคุมของ Storyteller
+        # เปิดหน้าจอสำหรับ Storyteller (botc-storyteller.html)
         template = env.get_template("botc-storyteller.html")
         content = template.render(request=request)
         return HTMLResponse(content=content)
@@ -54,18 +53,23 @@ async def get_storyteller(request: Request):
 
 @app.websocket("/ws/{room_code}")
 async def websocket_endpoint(websocket: WebSocket, room_code: str):
+    # ปรับให้เป็นตัวพิมพ์ใหญ่ตามมาตรฐานห้องในระบบ SQL DB ของคุณ
     room_upper = room_code.upper()
     await manager.connect(room_upper, websocket)
     try:
         while True:
-            # 🔄 รับข้อความจากไคลเอนต์ (เช่น ข้อความการส่งอัปเดตสเตท หรือคำสั่งโหวต)
+            # รอรับข้อความในกรณีที่หน้าบ้านส่ง Event สดผ่านมาทาง WS
             data = await websocket.receive_text()
+            
+            # โค้ดส่วนนี้จะรับข้อความดิบจากหน้าบ้านแล้วแปลงส่งกระจายต่อ (Echo/Broadcast)
+            import json
             try:
-                # ทำหน้าที่เป็นสถานีกลาง: ได้รับอัปเดตอะไรมา ส่งกระจายตัวนั้นหาทุกคนในห้องเดียวกันทันที
-                message_data = json.loads(data)
-                await manager.broadcast_to_room(room_upper, message_data)
-            except json.JSONDecodeError:
+                message_json = json.loads(data)
+                # เรียกใช้ .broadcast() ซึ่งเป็นเมธอดที่มีอยู่จริงใน websocket.py ของคุณ
+                await manager.broadcast(room_upper, message_json)
+            except Exception:
                 pass
+                
     except WebSocketDisconnect:
         manager.disconnect(room_upper, websocket)
 
@@ -73,4 +77,5 @@ app.include_router(api_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host=Config.HOST, port=Config.PORT, reload=Config.DEBUG)
+    # ปรับทางเดินสคริปต์รัน uvicorn ให้ถูกต้องตามโครงสร้างโปรเจกต์
+    uvicorn.run("app.main:app", host=Config.HOST, port=Config.PORT, reload=Config.DEBUG)
