@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTC Assistant — ผู้เล่นร่วมวงวิหาร</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #060508;
+    --bg-card: #0d0b10;
+    --bg-surface: #151219;
+    --bg-hover: #1e1a24;
+    --purple: #7c5cbf;
+    --purple-bright: #b08ee8;
+    --gold: #c9a84c;
+    --gold-bright: #f0c96a;
+    --blood: #8b1a1a;
+    --blood-bright: #c0392b;
+    --text-main: #e2d9f0;
+    --text-muted: #8a7aa0;
+    --text-dim: #4a3f5a;
+    --border: rgba(124,92,191,0.25);
+    --border-dim: rgba(124,92,191,0.1);
+    --good-bright: #4caf80;
+    --evil-bright: #c04c4c;
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-main);
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(124,92,191,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(139,26,26,0.04) 0%, transparent 60%);
+  }
+
+  /* ─── Header ─── */
+  .app-header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 52px;
+    background: rgba(6,5,8,0.95);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+  }
+
+  .logo {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    color: var(--gold-bright);
+    text-transform: uppercase;
+  }
+
+  .room-badge {
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold-bright);
+    font-size: 11px;
+    font-family: 'Cinzel', serif;
+    padding: 2px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .status-indicator {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #555;
+  }
+  .status-dot.online { background: var(--good-bright); box-shadow: 0 0 8px var(--good-bright); }
+
+  /* ─── Layout ─── */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  @media (max-width: 768px) {
+    .main-layout { grid-template-columns: 1fr; height: auto; overflow: visible; }
+    .panel-right { border-left: none; border-top: 1px solid var(--border-dim); height: auto; }
+  }
+
+  /* ─── Left Panel (Town Square & Giant Vote) ─── */
+  .panel-left {
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--purple-bright);
+    margin-bottom: 0.75rem;
+  }
+
+  /* Narration Callout Box */
+  .narration-box {
+    background: rgba(124,92,191,0.05);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    font-family: 'Crimson Text', serif;
+    font-size: 16px;
+    font-style: italic;
+    line-height: 1.6;
+    color: var(--text-main);
+    text-align: center;
+    min-height: 56px;
+  }
+
+  /* Giant Vote Button Arena */
+  .vote-arena {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    position: relative;
+  }
+
+  .phase-banner {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    color: var(--gold-bright);
+    text-transform: uppercase;
+  }
+
+  .giant-vote-btn {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #2a1645 0%, #150b24 100%);
+    border: 3px solid var(--purple);
+    color: var(--text-main);
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(124,92,191,0.3);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .giant-vote-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: var(--purple-bright);
+    box-shadow: 0 15px 35px rgba(124,92,191,0.25), inset 0 0 25px rgba(124,92,191,0.5);
+  }
+
+  .giant-vote-btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .giant-vote-btn:disabled {
+    background: #111;
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .giant-vote-btn .icon { font-size: 24px; }
+
+  /* Town Square Grid */
+  .town-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+  }
+
+  .town-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    position: relative;
+  }
+
+  .town-card.dead { opacity: 0.4; border-style: dashed; }
+  .town-card.dead::after {
+    content: '💀 DEAD';
+    position: absolute; top: 4px; right: 6px;
+    font-size: 8px; font-family: 'Cinzel', serif; color: var(--blood-bright); letter-spacing: 0.05em;
+  }
+
+  .tc-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(124,92,191,0.1);
+    border: 1px solid var(--border);
+    color: var(--purple-bright);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px auto;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+  }
+
+  .tc-name { font-size: 12px; font-weight: 400; color: var(--text-main); }
+
+  /* ─── Right Panel (Status & Log) ─── */
+  .panel-right {
+    border-left: 1px solid var(--border-dim);
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: rgba(13,11,16,0.5);
+  }
+
+  .voter-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 12px;
+  }
+
+  .vote-progress-text {
+    display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: var(--text-muted);
+  }
+
+  .vote-bar { height: 4px; background: var(--bg-deep); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+  .vote-fill { height: 100%; background: var(--purple); width: 0%; transition: width 0.3s; }
+
+  .voter-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .voter-chip {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    background: rgba(124,92,191,0.12); border: 1px solid var(--border-dim); color: var(--text-muted);
+  }
+
+  /* Log entries */
+  .event-log { display: flex; flex-direction: column; gap: 4px; }
+  .event-entry {
+    font-size: 12px; padding: 6px 10px; border-radius: 4px;
+    border-left: 2px solid transparent; color: var(--text-muted); background: var(--bg-card);
+  }
+  .event-entry.system { border-left-color: var(--gold-dim); color: var(--text-main); }
+  .event-entry.vote { border-left-color: var(--purple); }
+  .event-entry.narration { border-left-color: var(--purple-bright); font-style: italic; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo" id="headerIdentity">BOTC Assistant</div>
+  <div class="room-badge" id="roomDisplay">ROOM: —</div>
+
+  <div class="status-indicator">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">กำลังเชื่อมต่อ...</span>
+  </div>
+</header>
+
+<div class="main-layout">
+  
+  <!-- Left Main Area -->
+  <main class="panel-left">
+    
+    <!-- Narration Broadcaster Box -->
+    <div class="narration-box" id="narrationBox">
+      🔮 ยินดีต้อนรับสู่พิธีกรรมโบสถ์ศักดิ์สิทธิ์ โปรดรอ Storyteller ประกาศคำบรรยาย...
+    </div>
+
+    <!-- Giant Circle Vote Arena -->
+    <div class="vote-arena">
+      <div class="phase-banner" id="phaseBanner">🌙 คืนแห่งความลึกลับ</div>
+      
+      <button class="giant-vote-btn" id="voteBtn" onclick="castVote()" disabled>
+        <span class="icon">⚖️</span>
+        <span>VOTE</span>
+      </button>
+
+      <div style="font-size: 11px; color: var(--text-muted); text-align: center;" id="voteTip">
+        ปุ่มโหวตจะเปิดใช้งานเมื่อ Storyteller เริ่มการเสนอชื่อประหารชีวิต
+      </div>
+    </div>
+
+    <!-- Town Square List -->
+    <div>
+      <div class="section-title">ลานจัตุรัสกลางเมือง (Town Square)</div>
+      <div class="town-grid" id="townGrid">
+        <!-- ยิงรายชื่อผู้เล่นจากวง WS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Right Log Area -->
+  <aside class="panel-right">
+    
+    <!-- Vote Counter Status -->
+    <div>
+      <div class="section-title">กระดานนับคะแนนโหวตในห้อง</div>
+      <div class="voter-box">
+        <div class="vote-progress-text">
+          <span>คะแนนเสียงยกมือในรอบนี้</span>
+          <strong id="voteRatio">0 / 0</strong>
+        </div>
+        <div class="vote-bar"><div class="vote-fill" id="voteFill"></div></div>
+        <div class="voter-chips" id="voterChips">
+          <!-- ชิปชื่อคนโหวต -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Logs -->
+    <div>
+      <div class="section-title">บันทึกวิหาร</div>
+      <div class="event-log" id="eventLog">
+        <!-- บันทึกเหตุการณ์สดภายในห้อง -->
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<script>
+  // ─── ดึงค่าจาก Query Parameters ที่ส่งมาจากหน้าแรก ─────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  const ROOM = (urlParams.get('room') || 'DEMO').toUpperCase();
+  const PLAYER_NAME = urlParams.get('name') || 'ผู้เล่นนิรนาม';
+
+  // ตั้งค่าข้อมูลจำลองเริ่มต้นชั่วคราว ก่อนหลังบ้านจะซิงค์ข้อมูลจริงมาให้
+  let gameState = {
+    phase: 'night',
+    round: 1,
+    players: [],
+    votes: [],
+    votesNeeded: 0,
+    nominationActive: false
+  };
+
+  let ws = null;
+
+  // อัปเดตข้อมูลหัวเว็บแสดงชื่อตนเองและห้องเกม
+  document.getElementById('headerIdentity').textContent = `🔮 ${PLAYER_NAME}`;
+  document.getElementById('roomDisplay').textContent = `ROOM: ${ROOM}`;
+
+  // ─── ฟังก์ชันเชื่อมต่อหลังบ้านผ่านท่อ WebSocket ──────────────────────────────────
+  function connectWS() {
+    const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // ต่อท่อตรงเข้า /ws/{room_code} ตามที่สัญญากับหลังบ้านไว้
+    const wsUrl = isProd 
+      ? `wss://botc-assistant.onrender.com/ws/${ROOM}`
+      : `${wsProtocol}//${window.location.host}/ws/${ROOM}`;
+
+    try {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setOnlineStatus(true);
+        addLog('system', `📡 เข้าร่วมโบสถ์ห้องสตรีม [${ROOM}] สำเร็จเรียบร้อย`);
+      };
+
+      ws.onclose = () => {
+        setOnlineStatus(false);
+        addLog('system', '❌ ขาดการติดต่อกับเซิร์ฟเวอร์หลังบ้าน กำลังรีคอนเนกต์ใน 3 วินาที...');
+        setTimeout(connectWS, 3000);
+      };
+
+      ws.onerror = (err) => { console.error('WS Connection error:', err); };
+
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        handleIncomingMsg(msg);
+      };
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // ─── การรับและการยิงคำสั่งจัดการข้อมูล ──────────────────────────────────────────
+  function castVote() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    // ยิงชื่อตัวเราเองขึ้นระบบสถานีกลางเพื่อบันทึกการโหวต
+    ws.send(JSON.stringify({
+      type: 'vote',
+      player: PLAYER_NAME
+    }));
+    
+    // ล็อกปุ่มป้องกันการกดเบิ้ลซ้ำซ้อนในรอบนั้น
+    document.getElementById('voteBtn').disabled = true;
+    document.getElementById('voteTip').textContent = 'บันทึกคะแนนเสียงยกมือของคุณเข้าระบบแล้ว!';
+  }
+
+  function handleIncomingMsg(msg) {
+    // 1. ตรวจรับสเตทข้อมูลรวมที่ขยายสัญญาณมาจากฝั่ง Storyteller
+    if (msg.type === 'state_update' && msg.payload) {
+      const data = msg.payload;
+      gameState.phase = data.phase;
+      gameState.round = data.round;
+      gameState.players = data.players || [];
+      gameState.votes = data.votes || [];
+      gameState.votesNeeded = data.votesNeeded || 0;
+      
+      // ดักดูว่าขณะนี้มีแผง Nomination เปิดอยู่หรือไม่
+      gameState.nominationActive = data.nomination && data.nomination.active;
+
+      renderAllUI();
+    }
+    
+    // 2. ดักรับข้อความเสียงคำบรรยายสดจากผู้คุมเกม
+    if (msg.type === 'narration') {
+      document.getElementById('narrationBox').textContent = `📢 ${msg.text}`;
+      addLog('narration', msg.text);
+    }
+  }
+
+  // ─── ฟังก์ชันการเรนเดอร์หน้าจอตามข้อมูลปัจจุบัน ─────────────────────────────────
+  function renderAllUI() {
+    // เรนเดอร์ลานจัตุรัสเมือง (Town Square)
+    const grid = document.getElementById('townGrid');
+    if (gameState.players.length === 0) {
+      grid.innerHTML = `<div style="color:var(--text-dim); font-size:12px;">ยังไม่มีรายชื่อผู้เล่นที่ลงทะเบียนในห้องนี้...</div>`;
+    } else {
+      grid.innerHTML = gameState.players.map(p => `
+        <div class="town-card ${!p.alive ? 'dead' : ''}">
+          <div class="tc-avatar">${p.name.charAt(0)}</div>
+          <div class="tc-name">${p.name}</div>
+        </div>
+      `).join('');
+    }
+
+    // อัปเดตป้ายแจ้งกลางวัน/กลางคืน
+    const banner = document.getElementById('phaseBanner');
+    banner.textContent = gameState.phase === 'night' ? `🌙 คืนที่ ${gameState.round}` : `☀️ วันที่ ${gameState.round}`;
+
+    // ควบคุมแผงปุ่มกดโหวต (เปิดให้กดเฉพาะกลางวัน และมีกิจกรรมเสนอชื่อโหวตประหารเท่านั้น)
+    const voteBtn = document.getElementById('voteBtn');
+    const voteTip = document.getElementById('voteTip');
+    
+    if (gameState.phase === 'night') {
+      voteBtn.disabled = true;
+      voteTip.textContent = 'วิหารอยู่ในช่วงเวลากลางคืน ผู้เล่นทุกคนห้ามออกเสียงใดๆ';
+    } else {
+      // ตรวจสอบว่ามีชื่อตัวเองโหวตไปแล้วหรือยัง
+      const codeVoted = gameState.votes.includes(PLAYER_NAME);
+      
+      if (codeVoted) {
+        voteBtn.disabled = true;
+        voteTip.textContent = 'คุณยกมือออกคะแนนไปแล้วในรอบนี้';
+      } else {
+        voteBtn.disabled = false;
+        voteTip.textContent = '⚖️ กดโหวตยกมือประหารชีวิตเป้าหมายเวลานี้!';
+      }
+    }
+
+    // อัปเดตแถบวัดจำนวนคะแนนโหวตขวาบน
+    const currentVotes = gameState.votes.length;
+    const needed = gameState.votesNeeded || 1;
+    document.getElementById('voteRatio').textContent = `${currentVotes} / ${needed}`;
+    
+    const pct = Math.min(100, (currentVotes / needed) * 100);
+    document.getElementById('voteFill').style.width = pct + '%';
+
+    // อัปเดตแสดงชิปรายชื่อคนยกมือ
+    document.getElementById('voterChips').innerHTML = gameState.votes.map(name => `
+      <div class="voter-chip">${name}</div>
+    `).join('');
+  }
+
+  // ─── ฟังก์ชันความสวยงามและ Log เสริม ──────────────────────────────────────────
+  function setOnlineStatus(isOnline) {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (isOnline) {
+      dot.className = "status-dot online";
+      text.textContent = "ออนไลน์ (เชื่อมต่อวิหารจริง)";
+    } else {
+      dot.className = "status-dot";
+      text.textContent = "ขาดการติดต่อ";
+    }
+  }
+
+  function addLog(type, text) {
+    const logBox = document.getElementById('eventLog');
+    const time = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    const entry = document.createElement('div');
+    entry.className = `event-entry ${type}`;
+    entry.innerHTML = `<div style="font-size:9px; color:var(--text-dim); margin-bottom:1px;">${time}</div>${text}`;
+    
+    logBox.insertBefore(entry, logBox.firstChild);
+  }
+
+  // รันคำสั่งเริ่มจับท่อสัญญาณทำงานทันทีเมื่อเข้าหน้าเว็บ
+  connectWS();
+</script>
+
+</body>
+</html>
