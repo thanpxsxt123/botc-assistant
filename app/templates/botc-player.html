@@ -426,25 +426,54 @@
   }
 
   function handleIncomingMsg(msg) {
-    // 1. ตรวจรับสเตทข้อมูลรวมที่ขยายสัญญาณมาจากฝั่ง Storyteller
-    if (msg.type === 'state_update' && msg.payload) {
-      const data = msg.payload;
-      gameState.phase = data.phase;
-      gameState.round = data.round;
+    console.log("📥 ได้รับข้อมูลจากเซิร์ฟเวอร์:", msg);
+
+    // 1. ดักรับสเตทอัปเดตห้องเกมทั้งหมด (อิงตามสเปกบอร์ดของคุณ)
+    if (msg.event === 'state_update' || msg.type === 'state_update') {
+      const data = msg.data || msg.payload;
+      if (!data) return;
+
+      gameState.phase = data.phase || gameState.phase;
+      gameState.round = data.round || gameState.round;
       gameState.players = data.players || [];
       gameState.votes = data.votes || [];
       gameState.votesNeeded = data.votesNeeded || 0;
       
-      // ดักดูว่าขณะนี้มีแผง Nomination เปิดอยู่หรือไม่
-      gameState.nominationActive = data.nomination && data.nomination.active;
-
       renderAllUI();
+      addLog('system', `🔄 อัปเดตกระดานเมืองจากผู้เล่าเรื่อง (ผู้เล่นในห้อง: ${gameState.players.length} คน)`);
     }
     
-    // 2. ดักรับข้อความเสียงคำบรรยายสดจากผู้คุมเกม
-    if (msg.type === 'narration') {
-      document.getElementById('narrationBox').textContent = `📢 ${msg.text}`;
-      addLog('narration', msg.text);
+    // 2. ดักรับกรณีหลังบ้านแจ้งเตือนมีการเสนอชื่อประหารใหม่ (อ้างอิงจาก routes.py: new_nomination)
+    if (msg.event === 'new_nomination') {
+      const nomData = msg.data;
+      gameState.nominationActive = true;
+      gameState.votes = []; // ล้างโหวตรอรอบใหม่
+      
+      document.getElementById('narrationBox').textContent = `⚖️ ศาลเปิด! [${nomData.nominator}] ได้ทำการเสนอชื่อประหารชีวิต [${nomData.nominee}]`;
+      addLog('nomination', `${nomData.nominator} เสนอชื่อ ${nomData.nominee}`);
+      
+      // สั่งเปิดปุ่มโหวตให้กดได้ทันที
+      renderAllUI();
+    }
+
+    // 3. ดักรับกรณีกระดานนับคะแนนโหวตขยับ (อ้างอิงจาก routes.py: vote_updated)
+    if (msg.event === 'vote_updated') {
+      const voteData = msg.data;
+      // ปรับปรุงยอดโหวตบนหน้าจอ
+      document.getElementById('voteRatio').textContent = `${voteData.votes} / ${gameState.votesNeeded}`;
+      const pct = Math.min(100, (voteData.votes / (gameState.votesNeeded || 1)) * 100);
+      document.getElementById('voteFill').style.width = pct + '%';
+      
+      addLog('vote', `🗳️ มีคะแนนเสียงเพิ่มขึ้น ปัจจุบันสะสมได้ ${voteData.votes} เสียง`);
+    }
+    
+    // 4. ดักรับข้อความบรรยายสด
+    if (msg.type === 'narration' || msg.event === 'narration') {
+      const text = msg.text || (msg.data ? msg.data.text : '');
+      if (text) {
+        document.getElementById('narrationBox').textContent = `📢 ${text}`;
+        addLog('narration', text);
+      }
     }
   }
 
