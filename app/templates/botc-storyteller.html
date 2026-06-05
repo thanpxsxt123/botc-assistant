@@ -238,7 +238,7 @@
     align-items: center;
     justify-content: center;
     position: relative;
-    overflow: auto;
+    overflow: hidden;
     padding: 2rem;
   }
 
@@ -262,7 +262,7 @@
   /* Token Component */
   .token {
     position: absolute;
-    width: 96px; height: 96px;
+    width: 90px; height: 90px;
     border-radius: 50%;
     background: var(--bg-card);
     border: 2px solid var(--purple);
@@ -273,7 +273,6 @@
     justify-content: center;
     padding: 6px;
     cursor: grab;
-    transition: transform 0.2s, border-color 0.2s;
     user-select: none;
     z-index: 20;
   }
@@ -288,7 +287,7 @@
   }
 
   .token-name {
-    font-size: 11px; font-weight: 500; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px;
+    font-size: 11px; font-weight: 500; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px; color: #fff;
   }
   .token-role {
     font-family: 'Cinzel', serif; font-size: 8px; color: var(--gold-bright); letter-spacing: 0.05em; text-align: center;
@@ -390,18 +389,17 @@
         </select>
         <button class="btn" onclick="addPlayer()">+</button>
       </div>
-      <div class="registry-list" id="registryList">
-        </div>
+      <div class="registry-list" id="registryList"></div>
     </div>
   </aside>
 
-  <main class="grimoire-container">
+  <main class="grimoire-container" id="grimoireContainer">
     <div class="magic-circle" id="magicCircle">
       <div class="circle-center-logo">
         <h2>GRIMOIRE</h2>
         <div style="font-size:10px; color:var(--text-dim); margin-top:4px;">BLOOD ON THE CLOCKTOWER</div>
       </div>
-      </div>
+    </div>
   </main>
 
   <aside class="panel panel-right">
@@ -421,8 +419,7 @@
             <span>แทร็กเกอร์นับเสียงโหวต:</span>
             <strong id="voteRatioText" style="color:var(--purple-bright);">0 / 0</strong>
           </div>
-          <div class="vt-list" id="voteTrackerList">
-            </div>
+          <div class="vt-list" id="voteTrackerList"></div>
         </div>
       </div>
 
@@ -442,8 +439,7 @@
 
       <div>
         <div class="panel-header" style="padding:4px 0 8px 0; border:none;">บันทึกเหตุการณ์ห้อง</div>
-        <div class="log-view" id="logView">
-          </div>
+        <div class="log-view" id="logView"></div>
       </div>
 
     </div>
@@ -461,12 +457,10 @@
 </div>
 
 <script>
-  // ─── ดึงรหัสห้องจาก URL จากการสร้างห้องล็อบบี้หน้าแรก ─────────────────────────
   const urlParams = new URLSearchParams(window.location.search);
   const ROOM = (urlParams.get('room') || 'DEMO').toUpperCase();
   document.getElementById('roomDisplay').textContent = `ROOM: ${ROOM}`;
 
-  // สเตตหลักของบอร์ดควบคุม Grimoire (รวบรวมข้อมูลหลังบ้าน)
   let gameState = {
     phase: 'night',
     round: 1,
@@ -477,8 +471,13 @@
     eventLog: []
   };
 
-  let activeTokenUserId = null; // ถือ ID ตัวที่ถูกคลิกขวาเปิดเมนูย่อย
+  let activeTokenUserId = null; 
   let ws = null;
+
+  // สำหรับเก็บสถานะการลากโทเคนบนกระดาน
+  let isDragging = false;
+  let dragTarget = null;
+  let startX, startY, origX, origY;
 
   // ─── การจัดการข้อมูลผู้เล่นและโทเคน ──────────────────────────────────────────
   function addPlayer() {
@@ -487,7 +486,6 @@
     const name = nameInput.value.trim();
     if (!name) return;
 
-    // ตรวจสอบชื่อซ้ำ
     if (gameState.players.some(p => p.name.toUpperCase() === name.toUpperCase())) {
       alert('ชื่อผู้เล่นคนนี้ซ้ำอยู่ในระบบแล้วครับ'); return;
     }
@@ -499,7 +497,9 @@
       role: alignSelect.value === 'good' ? 'Townsfolk' : 'Minion/Demon',
       alive: true,
       poison: false,
-      drunk: false
+      drunk: false,
+      posX: null, // จะเซ็ตพิกัดอิสระหลังเรนเดอร์วงกลมครั้งแรก
+      posY: null
     };
 
     gameState.players.push(newPlayer);
@@ -507,7 +507,7 @@
     
     logEvent('system', `➕ เพิ่มผู้เล่นใหม่: ${name}`);
     renderAll();
-    broadcastState(); // แชร์ชุดข้อมูลกระดานใหม่ไปหาจอผู้เล่นทั่วไปทันที
+    broadcastState(); 
   }
 
   function renderAll() {
@@ -533,27 +533,27 @@
 
   function renderMagicCircle() {
     const circle = document.getElementById('magicCircle');
-    // ล้างเฉพาะตัวเหรียญโทเคนเก่าออก แต่เก็บโลโก้ตรงกลางไว้
     const tokens = circle.querySelectorAll('.token');
     tokens.forEach(t => t.remove());
 
     const total = gameState.players.length;
-    const radius = 200; // รัศมีความกว้างวงกลมเวทมนตร์
+    const radius = 200; 
 
     gameState.players.forEach((p, idx) => {
-      // คำนวณพิกัดมุมองศาเรียงกระจายรอบวงกลมเท่าๆ กันอัตโนมัติ
-      const angle = (idx * (2 * Math.PI / total)) - (Math.PI / 2);
-      const x = Math.round(radius * Math.cos(angle));
-      const y = Math.round(radius * Math.sin(angle));
+      // หากยังไม่มีพิกัดตำแหน่งลากวาง ให้คำนวณจุดเกาะขอบวงกลมเริ่มต้น
+      if (p.posX === null || p.posY === null) {
+        const angle = (idx * (2 * Math.PI / total)) - (Math.PI / 2);
+        p.posX = Math.round(radius * Math.cos(angle));
+        p.posY = Math.round(radius * Math.sin(angle));
+      }
 
       const tokenEl = document.createElement('div');
       tokenEl.className = `token ${p.alignment} ${!p.alive ? 'dead' : ''}`;
-      tokenEl.style.transform = `translate(${x}px, ${y}px)`;
-      
-      // บันทึก ID ไว้ที่ Element เพื่อนำไปใช้กับ Context Menu
+      tokenEl.style.left = `calc(50% + ${p.posX}px)`;
+      tokenEl.style.top = `calc(50% + ${p.posY}px)`;
+      tokenEl.style.transform = 'translate(-50%, -50%)';
       tokenEl.dataset.id = p.id;
 
-      // ไส้กราฟิกด้านในเหรียญโทเคนคัมภีร์ ST
       let badgesHtml = '';
       if (p.poison) badgesHtml += `<span class="status-badge sb-poison">🧪 Poison</span>`;
       if (p.drunk) badgesHtml += `<span class="status-badge sb-drunk">🍺 Drunk</span>`;
@@ -564,14 +564,59 @@
         <div class="status-badges">${badgesHtml}</div>
       `;
 
-      // ผูกอีเวนต์เปิดแผงควบคุมสิทธิ์เมื่อดักเมาส์คลิกขวา
+      // คลิกขวาเพื่อเปิดเมนูปรับสเตตัสบทบาท
       tokenEl.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         openContextMenu(p.id, e.clientX, e.clientY);
       });
 
+      // ผูกมัดอีเวนต์ตรวจจับความเคลื่อนไหวการลากโทเคนอิสระ (Drag & Drop)
+      tokenEl.addEventListener('mousedown', startDrag);
+
       circle.appendChild(tokenEl);
     });
+  }
+
+  // ─── ระบบวิศวกรรมการลากขยับเหรียญโทเคนอิสระบนโต๊ะ Grimoire ───────────────────
+  function startDrag(e) {
+    if (e.button !== 0) return; // ยอมรับเฉพาะคลิกซ้ายลากเท่านั้น
+    isDragging = true;
+    dragTarget = e.currentTarget;
+    
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const playerId = dragTarget.dataset.id;
+    const p = gameState.players.find(x => x.id === playerId);
+    origX = p.posX;
+    origY = p.posY;
+    
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  }
+
+  function doDrag(e) {
+    if (!isDragging || !dragTarget) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    const playerId = dragTarget.dataset.id;
+    const p = gameState.players.find(x => x.id === playerId);
+    
+    p.posX = origX + dx;
+    p.posY = origY + dy;
+    
+    dragTarget.style.left = `calc(50% + ${p.posX}px)`;
+    dragTarget.style.top = `calc(50% + ${p.posY}px)`;
+  }
+
+  function stopDrag() {
+    if (isDragging) {
+      isDragging = false;
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+      broadcastState(); // บอร์ดแคสต์ตำแหน่งจุดตัดใหม่ของเหรียญเข้าหลังบ้าน
+    }
   }
 
   // ─── การเปิดปิดเมนูปรับแต่งเหรียญผู้เล่น (Context Menu) ───────────────────────
@@ -583,26 +628,25 @@
     menu.style.top = `${clientY}px`;
   }
 
-  // สลับสถานะ ตาย/ฟื้นคืนชีพ
   function toggleTokenLife() {
     const p = gameState.players.find(x => x.id === activeTokenUserId);
     if (p) {
       p.alive = !p.alive;
       logEvent('system', `💀 ${p.name} ถูกปรับสถานะเป็น [${p.alive ? 'มีชีวิตอยู่' : 'เสียชีวิตแล้ว'}]`);
-      renderAll();
       recalculateVotesNeeded();
+      renderAll();
       broadcastState();
     }
     closeContextMenu();
   }
 
-  // สลับสถานะผิดปกติ เมา/ติดพิษ
   function toggleTokenStatus(type) {
     const p = gameState.players.find(x => x.id === activeTokenUserId);
     if (p) {
       p[type] = !p[type];
       logEvent('system', `🧪 ปรับแก้บัฟ ${p.name} ให้ ${type === 'poison' ? 'ติดพิษ' : 'เมาเหล้า'} = ${p[type]}`);
       renderAll();
+      broadcastState();
     }
     closeContextMenu();
   }
@@ -612,8 +656,8 @@
     if (p) {
       gameState.players = gameState.players.filter(x => x.id !== id);
       logEvent('system', `🚫 ลบผู้เล่นออกจากวงเกม: ${p.name}`);
-      renderAll();
       recalculateVotesNeeded();
+      renderAll();
       broadcastState();
     }
   }
@@ -627,7 +671,6 @@
     document.getElementById('contextMenu').style.display = 'none';
   }
 
-  // ปิดเมนูเมื่อคลิกพื้นที่อื่นบนจอ
   document.addEventListener('click', () => closeContextMenu());
 
   // ─── การตั้งค่าระบบเฟสเวลาและรอบเกม ──────────────────────────────────────────
@@ -648,7 +691,6 @@
   }
 
   function recalculateVotesNeeded() {
-    // คำนวณคะแนนเสียงขั้นต่ำประหารชีวิต (ครึ่งหนึ่งของคนเป็นปัดขึ้น)
     const aliveCount = gameState.players.filter(p => p.alive).length;
     gameState.votesNeeded = Math.ceil(aliveCount / 2);
   }
@@ -661,13 +703,21 @@
     if (!target) return;
 
     gameState.nomination = { active: true, nominator, target };
-    gameState.votes = []; // ล้างกล่องคะแนนเก่ารอคนยกมือโหวตใหม่
+    gameState.votes = []; 
     recalculateVotesNeeded();
 
     document.getElementById('nominationDisplay').textContent = `⚖️ [${nominator}] เสนอชื่อประหาร [${target}]`;
     logEvent('system', `📣 เปิดสภาโหวตคดี: ${nominator} กล่าวหา ${target}`);
     
     renderVoteTracker();
+    
+    // บอร์ดแคสต์ Event เจาะจงแจ้งให้มือถือฝั่งผู้เล่นเปิดสิทธิ์ปุ่มกดยกมือโหวตสู้คดี
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        event: 'new_nomination',
+        data: { nominator: nominator, nominee: target }
+      }));
+    }
     broadcastState();
   }
 
@@ -678,6 +728,10 @@
     logEvent('system', '❌ ล้างและปิดกระดานประหารชีวิตรอบปัจจุบันเสร็จสิ้น');
     
     renderVoteTracker();
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ event: 'clear_vote', data: {} }));
+    }
     broadcastState();
   }
 
@@ -691,24 +745,29 @@
     }
   }
 
-  // ─── ระบบเสียงบรรยายพิมพ์กระจายข่าว (Narration) ──────────────────────────────────
+  // ─── ระบบเสียงบรรยายส่งไปหน้าจอผู้เล่นทุกคน ──────────────────────────────────
   function sendNarration() {
     const input = document.getElementById('narrationInput');
     const text = input.value.trim();
     if (!text) return;
 
-    sendWS({ type: 'narration', text });
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        event: 'narration',
+        data: { text: text }
+      }));
+    }
     logEvent('system', `📢 บรรยายส่งออก: "${text.slice(0, 30)}..."`);
     input.value = '';
   }
 
   function quickNarrate(btn) {
-    let text = btn.textContent.slice(2); // ตัดอีโมจิข้างหน้าปุ่มออก
+    let text = btn.textContent.slice(2); 
     document.getElementById('narrationInput').value = text;
     sendNarration();
   }
 
-  // ─── การเปิดท่อ WebSocket เชื่อมโยงระบบ ──────────────────────────────────────────
+  // ─── การเปิดท่อรับส่งข้อมูลความเคลื่อนไหวผ่าน WebSocket ──────────────────────────
   function connectWS() {
     const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -722,7 +781,7 @@
       ws.onopen = () => {
         setOnlineBadge(true);
         logEvent('system', `🔮 เชื่อมวิหารคัมภีร์ห้องควบคุม [${ROOM}] เรียบร้อย`);
-        broadcastState(); // ซิงค์สเตทขึ้นระบบทันทีที่เชื่อมติด
+        broadcastState(); 
       };
 
       ws.onclose = () => {
@@ -739,15 +798,11 @@
     } catch (err) { console.error(err); }
   }
 
-  function sendWS(data) {
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
-  }
-
   function handleIncomingMsg(msg) {
     console.log("📥 ST ได้รับข้อมูล:", msg);
 
-    // ดักฟังผลโหวตที่ผู้เล่นยิงสวนขึ้นมา
-    if ((msg.type === 'vote' || msg.event === 'vote')) {
+    // รองรับกรณีลูกบ้าน/ผู้เล่นกดปุ่มโหวตยกมือสู้คดีสวนกลับขึ้นมา
+    if (msg.type === 'vote' || msg.event === 'vote') {
       const pName = msg.player || (msg.data ? msg.data.player : null);
       if (!pName) return;
 
@@ -756,49 +811,59 @@
         renderVoteTracker();
         logEvent('vote', `🗳️ ผู้เล่น [${pName}] ยกมือลงคะแนนโหวต`);
         
-        // ส่งอัปเดตกระจายสเตทใหม่ให้ผู้เล่นคนอื่นๆ เห็นเม็ดชิปชื่อคนโหวตพร้อมกัน
+        // ส่งอัปเดตกระจายแรงโหวตแบบสดๆ ให้มือถือเครื่องอื่นเห็นจำนวนขยับตาม
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            event: 'vote_updated',
+            data: { votes: gameState.votes.length }
+          }));
+        }
+        broadcastState();
+      }
+    }
+
+    // รองรับกรณีผู้เล่นหน้าบทร้ายใช้สกิลข้ามคืนเซฟลง Database ดันข้อมูลมาบอก ST
+    if (msg.event === 'player_action_triggered') {
+      const act = msg.data;
+      logEvent('system', `🧙‍♂️ ลางร้ายคืนนี้: [${act.player_name}] แอบยิงเวทมนตร์ [${act.action_type.toUpperCase()}] ใส่ [${act.target_name}]`);
+      
+      const target = gameState.players.find(p => p.name === act.target_name);
+      if (target) {
+        if (act.action_type === 'poison') target.poison = true;
+        if (act.action_type === 'kill') target.alive = false;
+        renderAll();
         broadcastState();
       }
     }
   }
 
+  // ฟังก์ชันกระจายสเตทรวมศูนย์หนึ่งเดียวที่ถูกต้อง ไร้โค้ดซ้ำซ้อน
   function broadcastState() {
-    // 🔄 ปรับให้ส่งครอบด้วยโครงแบริเออร์ event และ data ตามที่หลังบ้าน routes.py ต้องการ
-    const payload = {
-      event: 'state_update',
-      data: {
-        phase: gameState.phase,
-        round: gameState.round,
-        players: gameState.players.map(p => ({ 
-          id: p.id, 
-          name: p.name, 
-          alive: p.alive 
-        })),
-        nomination: gameState.nomination,
-        votes: gameState.votes,
-        votesNeeded: gameState.votesNeeded
-      }
-    };
-    sendWS(payload);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const payload = {
+        event: 'state_update',
+        data: {
+          phase: gameState.phase,
+          round: gameState.round,
+          players: gameState.players.map(p => ({ 
+            id: p.id, 
+            name: p.name, 
+            alive: p.alive,
+            alignment: p.alignment,
+            role: p.role,
+            poison: p.poison,
+            drunk: p.drunk
+          })),
+          nomination: gameState.nomination,
+          votes: gameState.votes,
+          votesNeeded: gameState.votesNeeded
+        }
+      };
+      ws.send(JSON.stringify(payload));
+    }
   }
 
-  function broadcastState() {
-    // รวมร่างก้อนสเตทส่งกระจายไปหน้าจอผู้เล่นทุกคนผ่านศูนย์กลาง
-    const payload = {
-      type: 'state_update',
-      payload: {
-        phase: gameState.phase,
-        round: gameState.round,
-        players: gameState.players.map(p => ({ id: p.id, name: p.name, alive: p.alive })),
-        nomination: gameState.nomination,
-        votes: gameState.votes,
-        votesNeeded: gameState.votesNeeded
-      }
-    };
-    sendWS(payload);
-  }
-
-  // ─── เครื่องมือความงามของระบบ ──────────────────────────────────────────────
+  // ─── เครื่องมือความงามเสริมของระบบ ──────────────────────────────────────────────
   function setOnlineBadge(isOnline) {
     const dot = document.getElementById('statusDot');
     const text = document.getElementById('statusText');
@@ -820,7 +885,6 @@
     view.insertBefore(entry, view.firstChild);
   }
 
-  // รันระบบเริ่มต้นความพร้อมทั้งหมดของ Grimoire
   renderAll();
   connectWS();
 </script>
