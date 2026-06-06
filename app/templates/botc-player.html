@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTC Assistant — หน้าจอผู้เล่น</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0806;
+    --bg-card: #111009;
+    --bg-surface: #1a1710;
+    --bg-hover: #221e14;
+    --gold: #c9a84c;
+    --gold-dim: #8a6f30;
+    --gold-bright: #f0c96a;
+    --blood: #8b1a1a;
+    --blood-bright: #c0392b;
+    --text-main: #e8d9b5;
+    --text-muted: #9a8a6a;
+    --text-dim: #5a4f3a;
+    --border: rgba(201,168,76,0.2);
+    --border-dim: rgba(201,168,76,0.05);
+    --purple: #7c5cbf;
+    --purple-bright: #b08ee8;
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-main);
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.05) 0%, transparent 75%);
+  }
+
+  .app-header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    background: rgba(10,8,6,0.95);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .brand-title {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--gold-bright);
+    font-weight: 700;
+  }
+
+  .badge {
+    background: rgba(201,168,76,0.08);
+    border: 1px solid var(--border);
+    color: var(--gold-bright);
+    font-size: 11px;
+    font-family: 'Cinzel', serif;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .badge.phase-night { background: rgba(124,92,191,0.15); border-color: var(--purple); color: var(--purple-bright); }
+  .badge.phase-day { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold-bright); }
+
+  .ws-status-bar {
+    height: 2px; width: 100%; background: #444; position: absolute; bottom: 0; left: 0;
+  }
+  .ws-status-bar.online { background: #4caf50; box-shadow: 0 0 8px #4caf50; }
+
+  .main-content {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  @media (min-width: 900px) {
+    .main-content {
+      max-width: 1100px;
+      grid-template-columns: 1fr 340px;
+    }
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold-bright);
+    margin-bottom: 1rem;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 6px;
+  }
+
+  .narration-box {
+    background: var(--bg-surface);
+    border-left: 3px solid var(--gold);
+    padding: 1rem;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+    min-height: 60px;
+  }
+
+  .character-identity {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .character-token {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 15px rgba(201,168,76,0.2);
+  }
+  .character-token.evil { border-color: var(--blood); box-shadow: 0 0 15px rgba(139,26,26,0.3); }
+
+  .identity-details h3 { font-family: 'Cinzel', serif; font-size: 18px; color: #fff; letter-spacing: 0.05em; }
+  .identity-details p { font-size: 12px; color: var(--text-muted); }
+
+  .town-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 0.5rem;
+  }
+
+  .town-member {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .town-member.dead { opacity: 0.5; border-style: dashed; background: rgba(0,0,0,0.2); }
+  .town-member-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .town-member-status { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+  .vote-progress-wrapper { margin: 1rem 0; }
+  .vp-labels { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .vp-bar-bg { width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; }
+  .vp-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, var(--purple), var(--purple-bright)); transition: width 0.4s ease; }
+
+  .btn {
+    width: 100%; background: var(--bg-surface); border: 1px solid var(--border);
+    color: var(--text-main); padding: 10px; border-radius: 6px; font-family: 'Cinzel', serif;
+    font-size: 11px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s;
+  }
+  .btn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--gold-bright); color: #fff; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-gold { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold-bright); }
+  .btn-vote-active { background: rgba(124,92,191,0.2); border-color: var(--purple-bright); color: var(--purple-bright); animation: pulse 2s infinite; }
+
+  textarea {
+    width: 100%; background: var(--bg-surface); border: 1px solid var(--border-dim);
+    border-radius: 6px; color: #fff; padding: 10px; font-size: 13px; font-family: inherit; resize: none; outline: none;
+  }
+  textarea:focus { border-color: var(--gold); }
+
+  .log-panel {
+    font-size: 11px; font-family: monospace; max-height: 150px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 4px; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 4px;
+  }
+  .log-item { padding-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.02); color: var(--text-muted); }
+  .log-item.system { color: var(--gold); }
+  .log-item.nomination { color: #e74c3c; }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(124,92,191,0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(124,92,191,0); }
+    100% { box-shadow: 0 0 0 0 rgba(124,92,191,0); }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand-title">BOTC Assistant</div>
+  <div class="room-info">
+    <span class="badge" id="roomDisplay">ROOM: —</span>
+    <span class="badge phase-night" id="phaseDisplay">🌙 NIGHT 1</span>
+  </div>
+  <div class="ws-status-bar" id="wsStatusBar"></div>
+</header>
+
+<div class="main-content">
+  <main id="gameMain">
+    <div id="lobbyView" style="display: none; text-align: center; padding: 2rem;">
+      <h2 style="font-family: 'Cinzel', serif; color: var(--gold-bright); margin-bottom: 1rem;">🏰 ยินดีต้อนรับสู่ล็อบบี้</h2>
+      <p id="lobbyStatusText" style="color: var(--text-muted); margin-bottom: 2rem;">กำลังรอ Storyteller เริ่มเกม... คุณสามารถเห็นเพื่อนร่วมวงได้ด้านล่าง</p>
+      
+      <div id="hostControls" style="display: none; margin-bottom: 2rem; padding: 1.5rem; border: 1px solid var(--gold); border-radius: 8px; background: rgba(201,168,76,0.1);">
+        <h4 style="color: var(--gold-bright); margin-bottom: 12px; font-family: 'Cinzel', serif;">👑 ควบคุมการเริ่มต้น (Host Mode)</h4>
+        <button class="btn btn-gold" style="font-size: 1.1rem;" onclick="hostStartGame()">🔮 สุ่มบทบาทและเริ่มเกมทันที</button>
+      </div>
+
+      <div style="background: rgba(201,168,76,0.05); border: 1px dashed var(--border); border-radius: 8px; padding: 1.5rem;">
+        <div id="lobbyPlayerList" class="town-grid"></div>
+      </div>
+    </div>
+
+    <div id="activeGameView">
+      <div id="timerDisplay" style="display: none; text-align: center; margin-bottom: 1rem; padding: 10px; background: rgba(139,26,26,0.2); border-radius: 8px; border: 1px solid var(--blood);">
+        <span style="font-size: 0.8rem; color: var(--text-muted); letter-spacing: 1px;">⏳ เวลาคงเหลือในเฟสนี้</span>
+        <div id="countdown" style="font-size: 1.8rem; font-family: 'Cinzel', serif; color: var(--gold-bright); font-weight: bold;">00:00</div>
+      </div>
+
+      <div class="narration-box" id="narrationBox">
+        ความเงียบสงบปกคลุมหมู่บ้าน... โปรดรอฟังประกาศถัดไปจากผู้เล่าเรื่อง (Storyteller)
+      </div>
+
+      <div class="card">
+        <div class="card-title">อัตลักษณ์ของคุณ (Your Identity)</div>
+        <div class="character-identity">
+          <div class="character-token" id="roleToken">🔮</div>
+          <div class="identity-details">
+            <h3 id="roleName">กำลังสุ่มบทบาท...</h3>
+            <p id="playerGreeting">ยินดีต้อนรับสู่สภากลางหมู่บ้าน</p>
+            <div id="secretInfoBox" style="display: none; margin-top: 8px; padding: 8px; background: rgba(139,26,26,0.2); border: 1px solid var(--blood); border-radius: 4px; font-size: 12px; color: var(--gold-bright);"></div>
+          </div>
+        </div>
+
+        <div id="nightActionPanel" style="display: none; background: rgba(139,26,26,0.15); border: 1px solid var(--blood); border-radius: 6px; padding: 12px; margin-top: 1rem;">
+          <h4 style="color: var(--gold-bright); font-family: 'Cinzel', serif; font-size: 11px; margin-bottom: 4px;">🔮 แผงความสามารถยามค่ำคืน (Night Action)</h4>
+          <div style="display: flex; gap: 6px;">
+            <select id="actionTargetSelect" style="flex: 1; background: var(--bg-surface); border: 1px solid var(--border); color: #fff; border-radius: 4px; padding: 6px; font-size: 12px; outline: none;"></select>
+            <button class="btn" style="background: var(--blood); border-color: var(--blood-bright); font-size: 11px; padding: 6px 12px; width: auto;" onclick="submitRoleAction()">ร่ายสกิล</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚖️ แท่นพิพากษาคดี (Nomination Tribunal)</div>
+        <div id="nominationStatusText" style="font-size: 13px; margin-bottom: 8px; text-align: center; color: var(--text-muted);">
+          ไม่มีกิจกรรมเสนอชื่อประหารชีวิตในขณะนี้
+        </div>
+
+        <div class="vote-progress-wrapper">
+          <div class="vp-labels">
+            <span>เสียงสนับสนุนโหวต:</span>
+            <strong id="voteRatio" style="color:var(--gold-bright)">0 / 0</strong>
+          </div>
+          <div class="vp-bar-bg">
+            <div class="vp-bar-fill" id="voteFill"></div>
+          </div>
+        </div>
+
+        <button class="btn" id="voteBtn" disabled onclick="castVote()">
+          🗳️ ยกมือลงคะแนนโหวต (Vote)
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏘️ สมาชิกสภาชาวเมือง (Town Square)</div>
+        <div class="town-grid" id="townGrid"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside>
+    <div class="card">
+      <div class="card-title">📝 บันทึกเบาะแสลับ (Grimoire Notes)</div>
+      <textarea id="playerNotes" rows="6" placeholder="พิมพ์บันทึกข้อสงสัย หรือบทบาทที่คาดการณ์ไว้ตรงนี้..."></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📜 ประวัติบันทึกวง</div>
+      <div class="log-panel" id="logPanel"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const ROOM = (urlParams.get('room') || 'DEMO').toUpperCase();
+  const PLAYER_NAME = urlParams.get('name') || ('Player_' + Math.floor(Math.random()*1000));
+  
+  let myId = null;
+  let sessionId = null;
+  let isAutomated = false;
+  let timerInterval = null;
+  let characterData = {
+    name: "กำลังสุ่มบทบาท...",
+    alignment: "Unknown",
+    ability: "โปรดรอ Storyteller เริ่มเกมเพื่อรับบทบาทของคุณ"
+  };
+
+  document.getElementById('roomDisplay').textContent = `ROOM: ${ROOM}`;
+
+  let gameState = {
+    phase: 'SETUP',
+    round: 0,
+    players: [],
+    votesNeeded: 0
+  };
+
+  let ws = null;
+
+  async function initPlayer() {
+    try {
+      const sRes = await fetch(`/api/session/${ROOM}`);
+      const sData = await sRes.json();
+      sessionId = sData.session_id;
+      isAutomated = sData.is_automated;
+
+      if (isAutomated) {
+        document.getElementById('lobbyStatusText').textContent = "โหมดรันเกมอัตโนมัติ: กำลังรอ Host เริ่มเกม...";
+        if (PLAYER_NAME === 'Host') {
+          document.getElementById('hostControls').style.display = 'block';
+        }
+      }
+
+      // ดันชื่อเข้า DB
+      const joinRes = await fetch('/api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, name: PLAYER_NAME })
+      });
+      const joinData = await joinRes.json();
+      myId = joinData.player_id;
+
+      await refreshGrimoire();
+      await refreshPlayerInfo();
+      connectWS();
+    } catch (err) { console.error("Init Player Error:", err); }
+  }
+
+  async function refreshGrimoire() {
+    if (!sessionId) return;
+    try {
+      const res = await fetch(`/api/grimoire?session_id=${sessionId}`);
+      const data = await res.json();
+      gameState.phase = data.session.current_phase;
+      gameState.round = data.session.day_number;
+      gameState.players = data.players;
+      renderAllUI();
+    } catch (err) { console.error("Refresh Grimoire Error:", err); }
+  }
+
+  async function hostStartGame() {
+    if (!sessionId) return;
+    if (gameState.players.length < 5) { alert("ต้องการอย่างน้อย 5 คนครับ"); return; }
+    
+    fetch('/api/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId })
+    });
+  }
+
+  function startCountdown(expiryStr) {
+    if (timerInterval) clearInterval(timerInterval);
+    if (!expiryStr) {
+      document.getElementById('timerDisplay').style.display = 'none';
+      return;
+    }
+
+    const expiry = new Date(expiryStr).getTime();
+    document.getElementById('timerDisplay').style.display = 'block';
+
+    timerInterval = setInterval(() => {
+      const now = new Date().getTime();
+      const diff = expiry - now;
+
+      if (diff <= 0) {
+        clearInterval(timerInterval);
+        document.getElementById('countdown').textContent = "00:00";
+        return;
+      }
+
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      document.getElementById('countdown').textContent = 
+        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  async function refreshPlayerInfo() {
+    if (!sessionId) return;
+    try {
+      const res = await fetch(`/api/player-info?session_id=${sessionId}&name=${encodeURIComponent(PLAYER_NAME)}`);
+      const data = await res.json();
+      myId = data.player_id;
+      characterData.name = data.character;
+      characterData.alignment = data.alignment;
+      characterData.ability = data.ability;
+      
+      const secretBox = document.getElementById('secretInfoBox');
+      if (data.secret_info) {
+        secretBox.innerHTML = `<strong>🤫 ข้อมูลลับ:</strong><br>${data.secret_info}`;
+        secretBox.style.display = 'block';
+      } else {
+        secretBox.style.display = 'none';
+      }
+
+      renderAllUI();
+    } catch (err) { console.warn("Player Info not ready yet"); }
+  }
+
+  function connectWS() {
+    const isProd = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = isProd 
+      ? `wss://botc-assistant.onrender.com/ws/${ROOM}`
+      : `${wsProtocol}//${window.location.host}/ws/${ROOM}`;
+
+    try {
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => setWsStatus(true);
+      ws.onclose = () => { setWsStatus(false); setTimeout(connectWS, 3000); };
+      ws.onmessage = (e) => handleIncomingMsg(JSON.parse(e.data));
+    } catch (err) { console.error(err); }
+  }
+
+  function handleIncomingMsg(msg) {
+    if (msg.event === 'state_update') {
+      const data = msg.data;
+      gameState.phase = data.phase;
+      gameState.round = data.round;
+      gameState.players = data.players;
+      renderAllUI();
+      if (isAutomated && data.timer_expires) startCountdown(data.timer_expires);
+    }
+    if (msg.event === 'game_over') {
+      alert(`🎉 เกมจบลงแล้ว! ผู้ชนะคือ: ${msg.data.winner === 'GOOD_WINS' ? 'ชาวเมือง (Good)' : 'ฝั่งปีศาจ (Evil)'}`);
+      addLog('system', `🏁 จบเกม: ${msg.data.winner}`);
+    }
+    if (msg.event === 'phase_change') {
+      addLog('system', `⏳ เปลี่ยนเฟสเป็น: ${msg.data.phase}`);
+      refreshPlayerInfo();
+      if (isAutomated) startCountdown(msg.data.timer_expires);
+    }
+    if (msg.event === 'new_nomination') {
+      const nomData = msg.data;
+      document.getElementById('nominationStatusText').innerHTML = `<span style="color:var(--blood-bright); font-weight:bold;">⚖️ คดีประหาร:</span> [${nomData.nominator}] กล่าวหา [${nomData.nominee}]`;
+      const voteBtn = document.getElementById('voteBtn');
+      voteBtn.disabled = false;
+      voteBtn.className = "btn btn-vote-active";
+      voteBtn.textContent = "🗳️ ยกมือลงคะแนนโหวต (Vote)";
+    }
+    if (msg.event === 'vote_updated') {
+      const voteData = msg.data;
+      document.getElementById('voteRatio').textContent = `${voteData.votes} / ${gameState.votesNeeded}`;
+      const pct = Math.min(100, (voteData.votes / (gameState.votesNeeded || 1)) * 100);
+      document.getElementById('voteFill').style.width = pct + '%';
+    }
+    if (msg.event === 'narration' || msg.type === 'narration') {
+      const text = msg.text || (msg.data ? msg.data.text : '');
+      if (text) document.getElementById('narrationBox').textContent = `📢 ${text}`;
+    }
+    if (msg.event === 'play_audio') {
+      const audio = new Audio(msg.data.audio_url);
+      audio.play().catch(e => console.error("Audio playback failed:", e));
+      document.getElementById('narrationBox').textContent = `📢 ${msg.data.text}`;
+    }
+  }
+
+  function renderAllUI() {
+    const isLobby = gameState.phase === 'SETUP';
+    document.getElementById('lobbyView').style.display = isLobby ? 'block' : 'none';
+    document.getElementById('activeGameView').style.display = isLobby ? 'none' : 'block';
+
+    if (isLobby) {
+      const lobbyList = document.getElementById('lobbyPlayerList');
+      lobbyList.innerHTML = gameState.players.map(p => `
+        <div class="town-member">
+          <div class="town-member-name">${p.name} ${p.name === PLAYER_NAME ? ' (คุณ)' : ''}</div>
+          <div class="town-member-status">⌛ กำลังรอ...</div>
+        </div>
+      `).join('');
+    }
+
+    const phaseEl = document.getElementById('phaseDisplay');
+    phaseEl.textContent = `${gameState.phase.toUpperCase()} (รอบที่ ${gameState.round})`;
+    phaseEl.className = gameState.phase.includes('NIGHT') ? "badge phase-night" : "badge phase-day";
+
+    const grid = document.getElementById('townGrid');
+    grid.innerHTML = gameState.players.map(p => `
+      <div class="town-member ${!p.is_alive ? 'dead' : ''}">
+        <div class="town-member-name">${p.name} ${p.name === PLAYER_NAME ? ' (คุณ)' : ''}</div>
+        <div class="town-member-status">${p.is_alive ? '💚 ยังมีชีวิต' : '💀 เสียชีวิตแล้ว'}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('roleName').textContent = characterData.name;
+    const tokenEl = document.getElementById('roleToken');
+    if (characterData.alignment === 'EVIL') {
+      tokenEl.textContent = "😈"; tokenEl.className = "character-token evil";
+    } else {
+      tokenEl.textContent = "🛡️"; tokenEl.className = "character-token";
+    }
+    document.getElementById('playerGreeting').innerHTML = characterData.ability || "โปรดรอ Storyteller เริ่มเกม...";
+    
+    // คำนวณคะแนนโหวตที่ต้องการ
+    const aliveCount = gameState.players.filter(p => p.is_alive).length;
+    gameState.votesNeeded = Math.ceil(aliveCount / 2);
+    document.getElementById('voteRatio').textContent = `0 / ${gameState.votesNeeded}`;
+
+    checkNightActionLogic();
+  }
+
+  function checkNightActionLogic() {
+    const panel = document.getElementById('nightActionPanel');
+    const select = document.getElementById('actionTargetSelect');
+    
+    const activeRoles = ['Imp', 'Poisoner', 'Butler', 'Slayer', 'Virgin', 'Fortuneteller', 'Empath', 'Monk', 'Ravenkeeper'];
+    if (gameState.phase.includes('NIGHT') && activeRoles.includes(characterData.name)) {
+      panel.style.display = 'block';
+      const targets = gameState.players.filter(p => {
+        const isSelf = p.name === PLAYER_NAME;
+        if (isSelf && characterData.name !== 'Imp') return false;
+        return p.is_alive;
+      });
+      select.innerHTML = targets.map(p => `<option value="${p.id}">${p.name}${p.name === PLAYER_NAME ? ' (ตัวเอง)' : ''}</option>`).join('');
+      if (targets.length === 0) panel.style.display = 'none';
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+
+  function submitRoleAction() {
+    const select = document.getElementById('actionTargetSelect');
+    const targetId = select.value;
+    const targetName = select.options[select.selectedIndex]?.text;
+    if (!targetId) return;
+    fetch('/api/player-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, player_id: myId, target_id: targetId, action_type: "use_ability" })
+    }).then(() => {
+      addLog('system', `🧙‍♂️ ส่งคำสั่งใช้ความสามารถใส่ [${targetName}] แล้ว`);
+      document.getElementById('nightActionPanel').style.display = 'none';
+    });
+  }
+
+  function castVote() {
+    const voteBtn = document.getElementById('voteBtn');
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ event: 'vote', player: PLAYER_NAME }));
+    }
+    voteBtn.disabled = true;
+    voteBtn.className = "btn";
+    voteBtn.textContent = "🗳️ ลงคะแนนเรียบร้อย";
+    addLog('system', '🗳️ คุณได้ทำการลงคะแนนเสียงประหารชีวิตแล้ว');
+  }
+
+  function setWsStatus(isOnline) {
+    const bar = document.getElementById('wsStatusBar');
+    if (bar) bar.className = isOnline ? 'ws-status-bar online' : 'ws-status-bar';
+  }
+
+  function addLog(type, text) {
+    const p = document.getElementById('logPanel');
+    const time = new Date().toLocaleTimeString('th-TH');
+    const div = document.createElement('div');
+    div.className = `log-item ${type}`;
+    div.textContent = `[${time}] ${text}`;
+    p.insertBefore(div, p.firstChild);
+  }
+
+  initPlayer();
+</script>
+</body>
+</html>
