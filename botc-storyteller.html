@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTC Assistant — Storyteller Grimoire</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #060508;
+    --bg-card: #0d0b10;
+    --bg-surface: #151219;
+    --bg-hover: #1e1a24;
+    --purple: #7c5cbf;
+    --purple-dim: #4a3575;
+    --purple-bright: #b08ee8;
+    --gold: #c9a84c;
+    --gold-dim: #8a6f30;
+    --gold-bright: #f0c96a;
+    --blood: #8b1a1a;
+    --blood-bright: #c0392b;
+    --text-main: #e2d9f0;
+    --text-muted: #8a7aa0;
+    --text-dim: #4a3f5a;
+    --border: rgba(124,92,191,0.25);
+    --border-dim: rgba(124,92,191,0.1);
+    --good: #2e7d52;
+    --good-bright: #4caf80;
+    --evil: #7d2e2e;
+    --evil-bright: #c04c4c;
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-main);
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 30% 0%, rgba(124,92,191,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 100%, rgba(139,26,26,0.06) 0%, transparent 50%);
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ─── Header ─── */
+  .app-header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 52px;
+    background: rgba(6,5,8,0.95);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+  }
+
+  .logo {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    color: var(--purple-bright);
+    text-transform: uppercase;
+    flex: 0 0 auto;
+  }
+
+  .logo span {
+    color: var(--gold);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
+  .storyteller-badge {
+    background: rgba(124,92,191,0.15);
+    border: 1px solid var(--border);
+    color: var(--purple-bright);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-family: 'Cinzel', serif;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .phase-btn {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+  }
+
+  .phase-btn.night {
+    background: rgba(139,26,26,0.15);
+    border-color: var(--blood);
+    color: #e08080;
+  }
+
+  .phase-btn.night:hover { background: rgba(139,26,26,0.3); }
+
+  .phase-btn.day {
+    background: rgba(201,168,76,0.12);
+    border-color: var(--gold-dim);
+    color: var(--gold-bright);
+  }
+
+  .phase-btn.day:hover { background: rgba(201,168,76,0.25); }
+
+  .phase-btn.active {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .round-display {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 0 8px;
+    border-left: 1px solid var(--border-dim);
+    border-right: 1px solid var(--border-dim);
+  }
+
+  /* ─── Layout ─── */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  /* ─── Grimoire ─── */
+  .panel-grimoire {
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .grimoire-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--purple-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .player-count-summary {
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+  }
+
+  .count-item { color: var(--text-dim); }
+  .count-item strong { color: var(--text-main); }
+
+  /* Grimoire player grid */
+  .grimoire-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .grimoire-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .grimoire-card:hover {
+    border-color: var(--border);
+    background: var(--bg-hover);
+  }
+
+  .grimoire-card.dead {
+    opacity: 0.5;
+    border-style: dashed;
+  }
+
+  .grimoire-card.selected {
+    border-color: var(--purple);
+    background: rgba(124,92,191,0.07);
+  }
+
+  .gc-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .gc-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    flex: 0 0 38px;
+    border: 1px solid;
+  }
+
+  .gc-avatar.good { background: rgba(46,125,82,0.15); border-color: rgba(46,125,82,0.4); color: var(--good-bright); }
+  .gc-avatar.evil { background: rgba(125,46,46,0.2); border-color: rgba(125,46,46,0.4); color: var(--evil-bright); }
+
+  .gc-info { flex: 1; min-width: 0; }
+
+  .gc-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gc-name-input {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    color: var(--text-main);
+    padding: 2px 5px;
+    font-size: 12px;
+    border-radius: 4px;
+  }
+
+  .gc-role {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--purple-bright);
+    letter-spacing: 0.05em;
+  }
+
+  .gc-role.evil { color: var(--evil-bright); }
+  .gc-role.demon { color: #e05555; }
+
+  .gc-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .gc-badge {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+
+  .badge-drunk { background: rgba(201,168,76,0.15); color: var(--gold-bright); border: 1px solid rgba(201,168,76,0.3); }
+  .badge-poisoned { background: rgba(70,120,70,0.2); color: #7be07b; border: 1px solid rgba(70,120,70,0.4); }
+  .badge-protected { background: rgba(100,100,200,0.15); color: #8888ff; border: 1px solid rgba(100,100,200,0.3); }
+  .badge-traveller { background: rgba(150,100,50,0.2); color: #d09050; border: 1px solid rgba(150,100,50,0.3); }
+
+  .gc-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-dim);
+  }
+
+  .gc-btn {
+    flex: 1;
+    padding: 4px;
+    font-size: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--border-dim);
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .gc-btn:hover { background: var(--bg-hover); color: var(--text-main); border-color: var(--border); }
+  .gc-btn.kill:hover { background: rgba(139,26,26,0.2); color: var(--evil-bright); border-color: var(--blood); }
+  .gc-btn.revive:hover { background: rgba(46,125,82,0.15); color: var(--good-bright); border-color: var(--good); }
+
+  /* ─── Nomination Control ─── */
+  .nom-control {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .nom-control::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--purple), transparent);
+  }
+
+  .nom-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--purple-bright);
+    margin-bottom: 1rem;
+  }
+
+  .nom-selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .select-wrap { position: relative; }
+  .select-wrap label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+  select {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    color: var(--text-main);
+    padding: 7px 10px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  select:focus { outline: none; border-color: var(--border); }
+
+  .nom-btn-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-action {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    border: 1px solid;
+  }
+
+  .btn-action.primary {
+    background: rgba(124,92,191,0.2);
+    border-color: var(--purple-dim);
+    color: var(--purple-bright);
+  }
+
+  .btn-action.primary:hover { background: rgba(124,92,191,0.35); }
+
+  .btn-action.danger {
+    background: rgba(139,26,26,0.15);
+    border-color: var(--blood);
+    color: #e08080;
+  }
+
+  .btn-action.danger:hover { background: rgba(139,26,26,0.3); }
+
+  .btn-action.success {
+    background: rgba(46,125,82,0.15);
+    border-color: var(--good);
+    color: var(--good-bright);
+  }
+
+  .btn-action.success:hover { background: rgba(46,125,82,0.25); }
+
+  /* Vote tracker */
+  .vote-tracker {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-top: 8px;
+  }
+
+  .vote-tracker-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .vote-big {
+    font-family: 'Cinzel', serif;
+    font-size: 26px;
+    color: var(--gold-bright);
+  }
+
+  .vote-bar { height: 4px; background: var(--bg-card); border-radius: 2px; overflow: hidden; }
+  .vote-fill { height: 100%; background: var(--purple); border-radius: 2px; transition: width 0.3s; }
+
+  /* Voter list */
+  .voter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .voter-chip {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(124,92,191,0.12);
+    border: 1px solid var(--border-dim);
+    color: var(--text-muted);
+  }
+
+  /* ─── Right Panel ─── */
+  .panel-right {
+    border-left: 1px solid var(--border-dim);
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .panel-section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--purple-dim);
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Narration composer */
+  .narration-compose {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .narration-compose textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+    font-style: italic;
+    padding: 12px;
+    resize: none;
+    line-height: 1.7;
+    min-height: 90px;
+    outline: none;
+  }
+
+  .narration-compose textarea::placeholder { color: var(--text-dim); }
+
+  .narration-send-row {
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    border-top: 1px solid var(--border-dim);
+    background: var(--bg-surface);
+  }
+
+  .quick-narration {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .quick-btn {
+    padding: 6px 10px;
+    background: transparent;
+    border: 1px solid var(--border-dim);
+    border-radius: 5px;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  .quick-btn:hover { background: var(--bg-hover); border-color: var(--border); color: var(--text-main); }
+
+  /* Alive/Dead count */
+  .alive-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .alive-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .alive-stat .stat-num {
+    font-family: 'Cinzel', serif;
+    font-size: 24px;
+    margin-bottom: 2px;
+  }
+
+  .alive-stat .stat-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Event log */
+  .event-log { display: flex; flex-direction: column; gap: 5px; }
+
+  .event-entry {
+    font-size: 12px;
+    padding: 7px 10px;
+    border-radius: 5px;
+    border-left: 2px solid transparent;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+
+  .event-entry.kill { background: rgba(139,26,26,0.1); border-left-color: var(--blood); }
+  .event-entry.vote { background: rgba(124,92,191,0.07); border-left-color: var(--purple-dim); }
+  .event-entry.system { background: rgba(46,125,82,0.07); border-left-color: var(--good); }
+  .event-entry.ability { background: rgba(201,168,76,0.07); border-left-color: var(--gold-dim); }
+
+  .event-time { font-size: 9px; color: var(--text-dim); margin-bottom: 1px; }
+</style>
+</head>
+<body>
+
+<!-- ─── หน้ากากสร้างห้อง / เข้าร่วมห้อง (Lobby Overlay) ─── -->
+<div id="lobbyOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-deep); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; max-width: 420px; padding: 2rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; overflow: hidden;">
+    <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--gold), transparent);"></div>
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <h1 style="font-family: 'Cinzel', serif; font-size: 22px; color: var(--gold-bright); letter-spacing: 0.1em; margin-bottom: 6px;">BLOOD ON THE CLOCKTOWER</h1>
+      <p style="font-family: 'Crimson Text', serif; font-size: 14px; font-style: italic; color: var(--text-muted);">— Assistant Realm —</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+      <div>
+        <label style="font-size: 11px; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; display: block; margin-bottom: 6px;">รหัสห้อง (Room Code)</label>
+        <input type="text" id="lobbyRoomInput" placeholder="ตัวอย่าง: DEMO, BKK99" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-dim); border-radius: 6px; color: var(--text-main); padding: 10px 14px; font-family: 'Cinzel', serif; font-size: 16px; letter-spacing: 0.1em; outline: none;" oninput="this.value = this.value.toUpperCase()">
+      </div>
+      <div id="lobbyNameSection">
+        <label style="font-size: 11px; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; display: block; margin-bottom: 6px;">ชื่อของคุณ (Your Name)</label>
+        <input type="text" id="lobbyNameInput" placeholder="พิมพ์ชื่อเล่นของคุณ..." style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-dim); border-radius: 6px; color: var(--text-main); padding: 10px 14px; font-family: 'Sarabun', sans-serif; font-size: 14px; outline: none;">
+      </div>
+      <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 8px;">
+        <button onclick="submitLobby()" class="btn-action primary" style="width: 100%; padding: 12px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase;">🔮 เข้าสู่โบสถ์ศักดิ์สิทธิ์ (Enter Game)</button>
+      </div>
+      <div style="display: flex; align-items: center; text-align: center; margin: 10px 0;">
+        <div style="flex: 1; border-bottom: 1px dashed var(--border-dim);"></div>
+        <span style="padding: 0 10px; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em;">สลับโหมด</span>
+        <div style="flex: 1; border-bottom: 1px dashed var(--border-dim);"></div>
+      </div>
+      <div id="lobbyRoleSwitcher" style="text-align: center;"></div>
+    </div>
+  </div>
+</div>
+
+<header class="app-header">
+  <div class="logo">Grimoire <span>— Storyteller View</span></div>
+  <div class="storyteller-badge">Storyteller</div>
+
+  <div class="header-controls">
+    <div class="round-display" id="roundDisplay">คืนที่ 1</div>
+    <button class="phase-btn night active" id="btnNight" onclick="setPhase('night')">🌙 กลางคืน</button>
+    <button class="phase-btn day" id="btnDay" onclick="setPhase('day')">☀️ กลางวัน</button>
+    <div style="width:1px;height:24px;background:var(--border-dim)"></div>
+    <button class="btn-action danger" style="padding:5px 12px;font-size:9px;flex:none" onclick="advanceRound()">ข้ามคืน ▶</button>
+  </div>
+</header>
+
+<div class="main-layout">
+
+  <!-- Grimoire Grid -->
+  <div class="panel-grimoire">
+
+    <div class="grimoire-title">
+      <span>Grimoire</span>
+      <div class="player-count-summary">
+        <div class="count-item">สด: <strong id="aliveCount">0</strong></div>
+        <div class="count-item">ตาย: <strong id="deadCount">0</strong></div>
+        <div class="count-item">Good: <strong id="goodCount" style="color:var(--good-bright)">0</strong></div>
+        <div class="count-item">Evil: <strong id="evilCount" style="color:var(--evil-bright)">0</strong></div>
+      </div>
+    </div>
+
+    <div class="grimoire-grid" id="grimoireGrid">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Nomination Control -->
+    <div class="nom-control">
+      <div class="nom-section-title">การเสนอชื่อ & โหวต</div>
+      <div class="nom-selects">
+        <div class="select-wrap">
+          <label>ผู้เสนอชื่อ</label>
+          <select id="nomSelect">
+            <option value="">เลือกผู้เล่น</option>
+          </select>
+        </div>
+        <div class="select-wrap">
+          <label>เป้าหมาย</label>
+          <select id="targetSelect">
+            <option value="">เลือกผู้เล่น</option>
+          </select>
+        </div>
+      </div>
+      <div class="nom-btn-row">
+        <button class="btn-action primary" onclick="startNomination()">⚖️ เริ่มโหวต</button>
+        <button class="btn-action danger" onclick="executePlayer()">💀 ประหาร</button>
+        <button class="btn-action success" onclick="cancelNomination()">✕ ยกเลิก</button>
+      </div>
+      <div class="vote-tracker">
+        <div class="vote-tracker-row">
+          <div>
+            <div class="vote-big"><span id="stVoteCount">0</span> / <span id="stVoteNeeded">5</span></div>
+            <div style="font-size:11px;color:var(--text-dim)">ต้องการโหวต: <span id="stVoteMin">5</span></div>
+          </div>
+          <div style="text-align:right">
+            <button class="btn-action primary" style="padding:6px 12px;font-size:9px;flex:none" onclick="addVote()">+ โหวต</button>
+          </div>
+        </div>
+        <div class="vote-bar"><div class="vote-fill" id="stVoteFill" style="width:0%"></div></div>
+        <div class="voter-chips" id="voterChips"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Panel -->
+  <aside class="panel-right">
+
+    <!-- Stats -->
+    <div>
+      <div class="panel-section-title">สรุปสถานะ</div>
+      <div class="alive-grid">
+        <div class="alive-stat">
+          <div class="stat-num" style="color:var(--good-bright)" id="stAlive">9</div>
+          <div class="stat-label">มีชีวิต</div>
+        </div>
+        <div class="alive-stat">
+          <div class="stat-num" style="color:var(--evil-bright)" id="stDead">0</div>
+          <div class="stat-label">ตายแล้ว</div>
+        </div>
+        <div class="alive-stat">
+          <div class="stat-num" style="color:#6ba3d6" id="stGood">7</div>
+          <div class="stat-label">ฝ่าย Good</div>
+        </div>
+        <div class="alive-stat">
+          <div class="stat-num" style="color:var(--evil-bright)" id="stEvil">2</div>
+          <div class="stat-label">ฝ่าย Evil</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Narration -->
+    <div>
+      <div class="panel-section-title">
+        บรรยาย (Thai Narration)
+        <span style="color:var(--text-dim);font-size:9px">ส่งถึงผู้เล่นทุกคน</span>
+      </div>
+      <div class="narration-compose">
+        <textarea id="narrationInput" placeholder="พิมพ์คำบรรยาย หรือเลือกจากด้านล่าง..."></textarea>
+        <div class="narration-send-row">
+          <button class="btn-action primary" style="flex:none;padding:5px 14px;font-size:9px" onclick="sendNarration()">📢 ส่ง</button>
+          <button class="btn-action" style="flex:none;padding:5px 14px;font-size:9px;border-color:var(--border-dim);color:var(--text-muted)" onclick="document.getElementById('narrationInput').value=''">ล้าง</button>
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="quick-narration">
+          <button class="quick-btn" onclick="quickNarrate(this)">🌙 ทุกคนหลับตา กลางคืนเริ่มขึ้นแล้ว</button>
+          <button class="quick-btn" onclick="quickNarrate(this)">☀️ กลางวันเริ่มขึ้น — พูดคุยได้เลย</button>
+          <button class="quick-btn" onclick="quickNarrate(this)">💀 คืนนี้มีผู้เสียชีวิต 1 คน</button>
+          <button class="quick-btn" onclick="quickNarrate(this)">😴 คืนนี้ไม่มีใครตาย</button>
+          <button class="quick-btn" onclick="quickNarrate(this)">⚖️ โหวตนับได้ถึง {target} — เขาถูกประหาร</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Log -->
+    <div>
+      <div class="panel-section-title">บันทึกเหตุการณ์</div>
+      <div class="event-log" id="eventLog">
+        <!-- entries -->
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<script>
+// ─── Game Data ────────────────────────────────────────────────────────────────
+const ROLES = {
+  Empath:       { alignment: 'good',  type: 'Townsfolk', icon: '👁️' },
+  Washerwoman:  { alignment: 'good',  type: 'Townsfolk', icon: '🧺' },
+  Librarian:    { alignment: 'good',  type: 'Townsfolk', icon: '📚' },
+  Investigator: { alignment: 'good',  type: 'Townsfolk', icon: '🔍' },
+  Chef:         { alignment: 'good',  type: 'Townsfolk', icon: '👨‍🍳' },
+  Fortune_Teller: { alignment: 'good', type: 'Townsfolk', icon: '🔮' },
+  Undertaker:   { alignment: 'good',  type: 'Townsfolk', icon: '⚰️' },
+  Monk:         { alignment: 'good',  type: 'Townsfolk', icon: '🧘' },
+  Ravenkeeper:  { alignment: 'good',  type: 'Townsfolk', icon: '🦅' },
+  Virgin:       { alignment: 'good',  type: 'Townsfolk', icon: '👼' },
+  Slayer:       { alignment: 'good',  type: 'Townsfolk', icon: '⚔️' },
+  Soldier:      { alignment: 'good',  type: 'Townsfolk', icon: '🛡️' },
+  Mayor:        { alignment: 'good',  type: 'Townsfolk', icon: '👑' },
+  Drunk:        { alignment: 'good',  type: 'Outsider',  icon: '🍺' },
+  Recluse:      { alignment: 'good',  type: 'Outsider',  icon: '🏠' },
+  Saint:        { alignment: 'good',  type: 'Outsider',  icon: '✝️' },
+  Butler:       { alignment: 'good',  type: 'Outsider',  icon: '🤵' },
+  Poisoner:     { alignment: 'evil',  type: 'Minion',    icon: '🧪' },
+  Spy:          { alignment: 'evil',  type: 'Minion',    icon: '🕵️' },
+  Baron:        { alignment: 'evil',  type: 'Minion',    icon: '🎭' },
+  Scarlet_Woman:{ alignment: 'evil',  type: 'Minion',    icon: '💃' },
+  Imp:          { alignment: 'evil',  type: 'Demon',     icon: '😈' },
+};
+
+const urlParams = new URLSearchParams(window.location.search);
+const ROOM = urlParams.get('room') || 'DEMO';
+const SESSION = urlParams.get('session') || '1';
+
+let gameState = {
+  phase: 'night',
+  round: 1,
+  players: [
+    { id: 1,  name: 'สมชาย',    role: 'Empath',        alive: true,  votes: [], modifiers: [] },
+    { id: 2,  name: 'สมหญิง',    role: 'Washerwoman',   alive: true,  votes: [], modifiers: [] },
+    { id: 3,  name: 'วีรศักดิ์',  role: 'Poisoner',      alive: true,  votes: [], modifiers: [] },
+    { id: 4,  name: 'นารีรัตน์',  role: 'Chef',           alive: true,  votes: [], modifiers: [] },
+    { id: 5,  name: 'ประทีป',    role: 'Imp',           alive: true,  votes: [], modifiers: [] },
+    { id: 6,  name: 'มาลี',      role: 'Librarian',     alive: true,  votes: [], modifiers: [] },
+    { id: 7,  name: 'ธนพล',     role: 'Monk',          alive: true,  votes: [], modifiers: [] },
+    { id: 8,  name: 'จิตรา',     role: 'Drunk',         alive: true,  votes: [], modifiers: ['drunk'] },
+    { id: 9,  name: 'บรรลือ',    role: 'Spy',           alive: true,  votes: [], modifiers: [] },
+  ],
+  nomination: { nominator: null, target: null, active: false },
+  votes: [],
+  eventLog: [],
+  selectedPlayer: null,
+};
+
+let ws = null;
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function connectWS() {
+  const wsUrl = `ws://${window.location.host}/ws/storyteller?room=${ROOM}&session=${SESSION}`;
+  try {
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => logEvent('system', 'WebSocket เชื่อมต่อแล้ว');
+    ws.onclose = () => { logEvent('system', 'WebSocket ตัดการเชื่อมต่อ'); setTimeout(connectWS, 3000); };
+    ws.onerror = () => {};
+    ws.onmessage = (e) => handleMsg(JSON.parse(e.data));
+  } catch (e) {}
+}
+
+function sendWS(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
+}
+
+function handleMsg(msg) {
+  if (msg.type === 'vote') {
+    const p = gameState.players.find(x => x.name === msg.player);
+    if (p && !gameState.votes.includes(p.name)) {
+      gameState.votes.push(p.name);
+      renderVoteTracker();
+      logEvent('vote', `${p.name} ลงคะแนน`);
+    }
+  }
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderGrimoire();
+  updateCounts();
+  renderVoteTracker();
+  populateSelects();
+}
+
+function renderGrimoire() {
+  const grid = document.getElementById('grimoireGrid');
+  grid.innerHTML = gameState.players.map(p => {
+    const role = ROLES[p.role] || { alignment: 'good', type: 'Townsfolk', icon: '?' };
+    const isEvil = role.alignment === 'evil';
+    const isDemon = role.type === 'Demon';
+    const modBadges = p.modifiers.map(m => `<span class="gc-badge badge-${m}">${m}</span>`).join('');
+    const selected = gameState.selectedPlayer === p.id ? 'selected' : '';
+    const dead = !p.alive ? 'dead' : '';
+    const roleClass = isDemon ? 'demon' : isEvil ? 'evil' : '';
+    return `
+      <div class="grimoire-card ${dead} ${selected}" onclick="selectPlayer(${p.id})">
+        <div class="gc-top">
+          <div class="gc-avatar ${isEvil ? 'evil' : 'good'}">${p.name.charAt(0)}</div>
+          <div class="gc-info">
+            <div class="gc-name">${p.name}</div>
+            <div class="gc-role ${roleClass}">${ROLES[p.role]?.icon || ''} ${p.role}</div>
+          </div>
+        </div>
+        ${modBadges ? `<div class="gc-badges">${modBadges}</div>` : ''}
+        <div class="gc-actions">
+          ${p.alive
+            ? `<button class="gc-btn kill" onclick="killPlayer(event,${p.id})">💀 ฆ่า</button>`
+            : `<button class="gc-btn revive" onclick="revivePlayer(event,${p.id})">💚 ฟื้น</button>`
+          }
+          <button class="gc-btn" onclick="toggleMod(event,${p.id},'drunk')">🍺 Drunk</button>
+          <button class="gc-btn" onclick="toggleMod(event,${p.id},'poisoned')">🧪 Poison</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateCounts() {
+  const alive = gameState.players.filter(p => p.alive).length;
+  const dead = gameState.players.length - alive;
+  const good = gameState.players.filter(p => ROLES[p.role]?.alignment === 'good').length;
+  const evil = gameState.players.filter(p => ROLES[p.role]?.alignment === 'evil').length;
+  document.getElementById('aliveCount').textContent = alive;
+  document.getElementById('deadCount').textContent = dead;
+  document.getElementById('goodCount').textContent = good;
+  document.getElementById('evilCount').textContent = evil;
+  document.getElementById('stAlive').textContent = alive;
+  document.getElementById('stDead').textContent = dead;
+  document.getElementById('stGood').textContent = good;
+  document.getElementById('stEvil').textContent = evil;
+  const needed = Math.ceil(alive / 2) + (alive % 2 === 0 ? 1 : 0);
+  gameState.votesNeeded = needed;
+  document.getElementById('stVoteNeeded').textContent = needed;
+  document.getElementById('stVoteMin').textContent = needed;
+}
+
+function renderVoteTracker() {
+  const v = gameState.votes.length;
+  const n = gameState.votesNeeded || 5;
+  document.getElementById('stVoteCount').textContent = v;
+  const pct = Math.min(100, (v / n) * 100);
+  document.getElementById('stVoteFill').style.width = pct + '%';
+  document.getElementById('voterChips').innerHTML = gameState.votes.map(name =>
+    `<div class="voter-chip">${name}</div>`
+  ).join('');
+}
+
+function populateSelects() {
+  const alive = gameState.players.filter(p => p.alive);
+  const opts = alive.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('nomSelect').innerHTML = `<option value="">เลือก</option>${opts}`;
+  document.getElementById('targetSelect').innerHTML = `<option value="">เลือก</option>${opts}`;
+}
+
+function renderPhase() {
+  const { phase, round } = gameState;
+  const display = phase === 'night' ? `คืนที่ ${round}` : `วันที่ ${round}`;
+  document.getElementById('roundDisplay').textContent = display;
+  document.getElementById('btnNight').className = `phase-btn night ${phase === 'night' ? 'active' : ''}`;
+  document.getElementById('btnDay').className = `phase-btn day ${phase === 'day' ? 'active' : ''}`;
+}
+
+function renderEventLog() {
+  const el = document.getElementById('eventLog');
+  el.innerHTML = gameState.eventLog.slice(0, 25).map(e => `
+    <div class="event-entry ${e.type}">
+      <div class="event-time">${e.time}</div>
+      ${e.text}
+    </div>
+  `).join('');
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function selectPlayer(id) {
+  gameState.selectedPlayer = gameState.selectedPlayer === id ? null : id;
+  renderGrimoire();
+}
+
+function killPlayer(e, id) {
+  e.stopPropagation();
+  const p = gameState.players.find(x => x.id === id);
+  if (!p || !p.alive) return;
+  p.alive = false;
+  logEvent('kill', `${p.name} (${p.role}) เสียชีวิต`);
+  broadcastState();
+  renderAll();
+}
+
+function revivePlayer(e, id) {
+  e.stopPropagation();
+  const p = gameState.players.find(x => x.id === id);
+  if (!p || p.alive) return;
+  p.alive = true;
+  logEvent('system', `${p.name} ฟื้นคืนชีพ`);
+  broadcastState();
+  renderAll();
+}
+
+function toggleMod(e, id, mod) {
+  e.stopPropagation();
+  const p = gameState.players.find(x => x.id === id);
+  if (!p) return;
+  const idx = p.modifiers.indexOf(mod);
+  if (idx > -1) {
+    p.modifiers.splice(idx, 1);
+    logEvent('ability', `ลบ ${mod} จาก ${p.name}`);
+  } else {
+    p.modifiers.push(mod);
+    logEvent('ability', `ติด ${mod} ให้ ${p.name}`);
+  }
+  renderGrimoire();
+}
+
+function setPhase(phase) {
+  gameState.phase = phase;
+  renderPhase();
+  sendWS({ type: 'phase_change', phase, round: gameState.round });
+  logEvent('system', phase === 'night' ? `🌙 กลางคืนที่ ${gameState.round} เริ่มขึ้น` : `☀️ กลางวันที่ ${gameState.round} เริ่มขึ้น`);
+}
+
+function advanceRound() {
+  if (gameState.phase === 'night') {
+    setPhase('day');
+  } else {
+    gameState.round++;
+    setPhase('night');
+    gameState.votes = [];
+    renderVoteTracker();
+  }
+}
+
+function startNomination() {
+  const nomId = document.getElementById('nomSelect').value;
+  const targetId = document.getElementById('targetSelect').value;
+  if (!nomId || !targetId) return;
+  const nom = gameState.players.find(p => p.id == nomId);
+  const target = gameState.players.find(p => p.id == targetId);
+  if (!nom || !target) return;
+  gameState.nomination = { nominator: nom.name, target: target.name, active: true };
+  gameState.votes = [];
+  sendWS({ type: 'nomination', nominator: nom.name, target: target.name });
+  logEvent('vote', `⚖️ ${nom.name} เสนอชื่อ ${target.name}`);
+  renderVoteTracker();
+}
+
+function cancelNomination() {
+  gameState.nomination = { nominator: null, target: null, active: false };
+  gameState.votes = [];
+  sendWS({ type: 'cancel_nomination' });
+  logEvent('system', 'ยกเลิกการโหวต');
+  renderVoteTracker();
+}
+
+function executePlayer() {
+  const { nomination } = gameState;
+  if (!nomination.target) return;
+  const target = gameState.players.find(p => p.name === nomination.target);
+  if (!target) return;
+  target.alive = false;
+  logEvent('kill', `💀 ${target.name} ถูกประหารชีวิต (${gameState.votes.length} โหวต)`);
+  sendWS({ type: 'execution', player: target.name });
+  broadcastState();
+  renderAll();
+  cancelNomination();
+}
+
+function addVote() {
+  const { nomination } = gameState;
+  if (!nomination.active) return;
+  const nextPlayer = gameState.players.find(p => p.alive && !gameState.votes.includes(p.name) && p.name !== nomination.nominator);
+  if (!nextPlayer) return;
+  gameState.votes.push(nextPlayer.name);
+  sendWS({ type: 'vote_update', count: gameState.votes.length, voter: nextPlayer.name });
+  logEvent('vote', `${nextPlayer.name} ลงคะแนน`);
+  renderVoteTracker();
+}
+
+function sendNarration() {
+  const text = document.getElementById('narrationInput').value.trim();
+  if (!text) return;
+  sendWS({ type: 'narration', text });
+  logEvent('system', `📢 บรรยาย: "${text.slice(0, 40)}..."`);
+  document.getElementById('narrationInput').value = '';
+}
+
+function quickNarrate(btn) {
+  const { nomination } = gameState;
+  let text = btn.textContent.trim().replace(/^[^\s]+\s/, '');
+  if (nomination.target) text = text.replace('{target}', nomination.target);
+  document.getElementById('narrationInput').value = text;
+  sendNarration();
+}
+
+// ─── Log ──────────────────────────────────────────────────────────────────────
+function logEvent(type, text) {
+  gameState.eventLog.unshift({
+    type, text,
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  });
+  renderEventLog();
+}
+
+function broadcastState() {
+  const payload = {
+    type: 'state_update',
+    payload: {
+      phase: gameState.phase,
+      round: gameState.round,
+      players: gameState.players.map(p => ({
+        id: p.id, name: p.name, alive: p.alive
+      })),
+    }
+  };
+  sendWS(payload);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+renderAll();
+renderPhase();
+renderEventLog();
+logEvent('system', `Storyteller เชื่อมต่อ ROOM: ${ROOM}`);
+logEvent('system', 'Trouble Brewing — ผู้เล่น 9 คน เริ่มเกม');
+
+connectWS();
+
+// ─── ตรรกะควบคุมหน้าแรก (Lobby Logic) ───────────────────────────
+function initLobby() {
+  const params = new URLSearchParams(window.location.search);
+  const roomParam = params.get('room');
+  const nameParam = params.get('name');
+  const isStorytellerPage = document.body.innerHTML.includes('Storyteller View') || window.location.pathname.includes('storyteller');
+
+  if (isStorytellerPage) {
+    const nameSec = document.getElementById('lobbyNameSection');
+    if (nameSec) nameSec.style.display = 'none';
+  }
+
+  if (roomParam) {
+    document.getElementById('lobbyRoomInput').value = roomParam.toUpperCase();
+  } else if (localStorage.getItem('botc_last_room')) {
+    document.getElementById('lobbyRoomInput').value = localStorage.getItem('botc_last_room');
+  }
+
+  if (!isStorytellerPage) {
+    if (nameParam) {
+      document.getElementById('lobbyNameInput').value = nameParam;
+    } else if (localStorage.getItem('botc_last_name')) {
+      document.getElementById('lobbyNameInput').value = localStorage.getItem('botc_last_name');
+    }
+  }
+
+  const switcher = document.getElementById('lobbyRoleSwitcher');
+  if (switcher) {
+    if (isStorytellerPage) {
+      switcher.innerHTML = `<a href="botc-player.html${window.location.search}" style="color: var(--text-muted); font-size: 12px; text-decoration: none;">เปลี่ยนเป็นหน้าจอ <strong style="color:var(--gold)">"ผู้เล่นทั่วไป"</strong> 👤</a>`;
+    } else {
+      switcher.innerHTML = `<a href="botc-storyteller.html${window.location.search}" style="color: var(--text-muted); font-size: 12px; text-decoration: none;">เปลี่ยนเป็นหน้าจอ <strong style="color:var(--purple-bright)">"Storyteller"</strong> 👑</a>`;
+    }
+  }
+
+  if (roomParam && (isStorytellerPage || nameParam)) {
+    document.getElementById('lobbyOverlay').style.display = 'none';
+  }
+}
+
+function submitLobby() {
+  const roomValue = document.getElementById('lobbyRoomInput').value.trim().toUpperCase();
+  const nameInput = document.getElementById('lobbyNameInput');
+  const nameValue = nameInput ? nameInput.value.trim() : '';
+  const isStorytellerPage = document.body.innerHTML.includes('Storyteller View') || window.location.pathname.includes('storyteller');
+
+  if (!roomValue) {
+    alert('กรุณากรอกรหัสห้องก่อนเข้าใช้งานครับ');
+    return;
+  }
+  if (!isStorytellerPage && !nameValue) {
+    alert('กรุณากรอกชื่อของคุณเพื่อเข้าร่วมหมู่บ้านครับ');
+    return;
+  }
+
+  localStorage.setItem('botc_last_room', roomValue);
+  if (!isStorytellerPage) localStorage.setItem('botc_last_name', nameValue);
+
+  const newUrl = new URL(window.location.href);
+  newUrl.searchParams.set('room', roomValue);
+  if (!isStorytellerPage) {
+    newUrl.searchParams.set('name', nameValue);
+  } else {
+    newUrl.searchParams.delete('name');
+  }
+  
+  window.location.href = newUrl.toString();
+}
+
+initLobby();
+</script>
+</body>
+</html>
