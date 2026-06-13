@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTC Assistant — Storyteller Grimoire</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #060508; --bg-card: #0d0b10; --bg-surface: #151219; --bg-hover: #1e1a24;
+    --purple: #7c5cbf; --purple-dim: #4a3575; --purple-bright: #b08ee8;
+    --gold: #c9a84c; --gold-dim: #8a6f30; --gold-bright: #f0c96a;
+    --blood: #8b1a1a; --blood-bright: #c0392b;
+    --text-main: #e2d9f0; --text-muted: #8a7aa0; --text-dim: #4a3f5a;
+    --border: rgba(124,92,191,0.25); --border-dim: rgba(124,92,191,0.1);
+    --good-bright: #4caf80; --evil-bright: #c04c4c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-deep); color: var(--text-main); font-family: 'Sarabun', sans-serif;
+    height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(124,92,191,0.08) 0%, transparent 70%);
+  }
+
+  .app-header {
+    border-bottom: 1px solid var(--border); padding: 0 1.5rem; display: flex; align-items: center; gap: 1.5rem; height: 56px;
+    background: rgba(6,5,8,0.95); backdrop-filter: blur(12px); z-index: 100;
+  }
+  .logo { font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.15em; color: var(--gold-bright); font-weight: 700; text-transform: uppercase; }
+  .room-badge { background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.3); color: var(--gold-bright); font-size: 11px; font-family: 'Cinzel', serif; padding: 3px 10px; border-radius: 4px; }
+
+  .game-phase-control { display: flex; align-items: center; gap: 0.4rem; background: var(--bg-surface); border: 1px solid var(--border-dim); padding: 4px; border-radius: 6px; }
+  .phase-btn { background: transparent; border: none; color: var(--text-muted); font-family: 'Cinzel', serif; font-size: 9px; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+  .phase-btn.active { background: var(--purple-dim); color: var(--text-main); }
+
+  .status-indicator { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-dim); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #444; }
+  .status-dot.online { background: var(--good-bright); box-shadow: 0 0 8px var(--good-bright); }
+
+  .main-layout { flex: 1; display: grid; grid-template-columns: 260px 1fr 320px; overflow: hidden; }
+
+  .panel { background: var(--bg-card); border-right: 1px solid var(--border-dim); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-right { border-right: none; border-left: 1px solid var(--border-dim); }
+  .panel-header { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-dim); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.1em; color: var(--purple-bright); display: flex; justify-content: space-between; align-items: center; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 1rem; }
+
+  .registry-list { display: flex; flex-direction: column; gap: 6px; }
+  .registry-item { background: var(--bg-surface); border: 1px solid var(--border-dim); border-radius: 6px; padding: 10px; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+  .registry-item:hover { border-color: var(--purple); }
+  .registry-name { font-size: 13px; font-weight: 400; }
+  .registry-role { font-size: 9px; color: var(--gold-dim); display: block; margin-top: 2px; text-transform: uppercase; }
+  .btn-remove { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 12px; }
+  .btn-remove:hover { color: var(--blood-bright); }
+
+  .grimoire-container { background: var(--bg-deep); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .magic-circle { width: 480px; height: 480px; border: 1px dashed rgba(124,92,191,0.1); border-radius: 50%; position: relative; }
+
+  .token { position: absolute; width: 80px; height: 84px; border-radius: 50%; background: var(--bg-card); border: 2px solid var(--purple); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: grab; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+  .token.good { border-color: var(--good-bright); }
+  .token.evil { border-color: var(--evil-bright); }
+  .token.dead { border-style: dashed; opacity: 0.5; }
+  .token.dead::after { content: '💀'; position: absolute; top: -5px; right: -5px; font-size: 14px; text-shadow: 0 0 5px #000; }
+  .token-name { font-size: 10px; font-weight: bold; color: #fff; text-align: center; width: 85%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .token-role { font-size: 7px; color: var(--gold-bright); font-family: 'Cinzel', serif; letter-spacing: 0.05em; margin-top: 2px; }
+
+  .status-badges { display: flex; gap: 2px; position: absolute; bottom: -5px; }
+  .badge-s { font-size: 7px; padding: 1px 3px; border-radius: 2px; color: #fff; font-weight: bold; }
+  .bg-p { background: #8e44ad; }
+  .bg-d { background: #d35400; }
+
+  .btn { padding: 8px 12px; border-radius: 4px; border: 1px solid var(--gold); background: transparent; color: var(--gold-bright); font-family: 'Cinzel', serif; font-size: 9px; cursor: pointer; transition: 0.2s; }
+  .btn:hover:not(:disabled) { background: var(--gold-dim); color: #fff; }
+  .btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .btn-gold { background: var(--gold-dim); color: #fff; }
+
+  .control-group { background: var(--bg-surface); border-radius: 6px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-dim); }
+  .control-group h4 { font-size: 9px; font-family: 'Cinzel', serif; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+  
+  .log-view { height: 160px; overflow-y: auto; background: #000; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 10px; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px; }
+  .log-item.summary { color: var(--gold-bright); font-weight: bold; border-left: 2px solid var(--gold); padding-left: 5px; background: rgba(201,168,76,0.05); }
+  .log-item.death { color: var(--blood-bright); }
+  .log-item.phase { color: var(--purple-bright); border-bottom: 1px solid var(--border-dim); padding-bottom: 2px; margin-top: 5px; }
+  
+  .context-menu { position: absolute; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 4px; display: none; z-index: 1000; box-shadow: 0 5px 25px rgba(0,0,0,0.8); width: 150px; }
+  .m-item { padding: 10px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; color: var(--text-main); }
+  .m-item:hover { background: var(--bg-hover); color: var(--purple-bright); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">Grimoire v2.0</div>
+  <div class="room-badge" id="roomDisplay">ROOM: —</div>
+
+  <div class="game-phase-control">
+    <button class="phase-btn" id="pNight" onclick="setPhase('NIGHT')">🌙 Night</button>
+    <button class="phase-btn" id="pDay" onclick="setPhase('DAY_CHITCHAT')">☀️ Day</button>
+  </div>
+
+  <div id="currentPhaseBanner" style="background: var(--purple-dim); border: 1px solid var(--purple-bright); padding: 4px 15px; border-radius: 20px; font-family: 'Cinzel', serif; font-size: 12px; color: #fff; font-weight: bold; box-shadow: 0 0 10px var(--purple);">
+    PHASE: <span id="currentPhaseName">SETUP</span>
+  </div>
+
+  <div class="status-indicator">
+    <div class="status-dot" id="wsDot"></div>
+    <span id="wsText">Connecting...</span>
+  </div>
+</header>
+
+<div class="main-layout">
+  <aside class="panel">
+    <div class="panel-header">
+      <span>👥 ทะเบียนชาวเมือง</span>
+      <button class="btn btn-gold" id="btnDeal" onclick="startGame()">🎲 Deal Roles</button>
+    </div>
+    <div class="panel-body">
+      <div id="registryList" class="registry-list"></div>
+    </div>
+  </aside>
+
+  <main class="grimoire-container">
+    <div class="magic-circle" id="magicCircle"></div>
+  </main>
+
+  <aside class="panel panel-right">
+    <div class="panel-header">🔮 แผงควบคุม</div>
+    <div class="panel-body">
+      
+      <div class="control-group" id="nightPanel" style="display:none;">
+        <h4 style="color:var(--purple-bright);">🌑 ลำดับการปลุก</h4>
+        <div id="nightInfo" style="font-size:11px; margin-bottom:10px; color:var(--text-main); background:rgba(0,0,0,0.3); padding:10px; border-radius:4px; border-left: 2px solid var(--purple);"></div>
+        <button class="btn" style="width:100%; border-color:var(--purple);" onclick="advanceNight()">ปลุกคนถัดไป (Next)</button>
+      </div>
+
+      <div class="control-group">
+        <h4>📢 กระบอกเสียง (Narration)</h4>
+        <textarea id="narrInput" rows="3" style="width:100%; background:var(--bg-deep); border:1px solid var(--border-dim); color:#fff; padding:8px; font-size:11px; margin-bottom:8px; resize:none; outline:none;" placeholder="พิมพ์ประกาศถึงทุกคน..."></textarea>
+        <button class="btn" style="width:100%;" onclick="sendNarr()">ประกาศเสียง (Broadcast)</button>
+      </div>
+
+      <div class="control-group">
+        <h4>⚖️ ระบบประหาร</h4>
+        <div id="tellerNomStatus" style="font-size:11px; margin-bottom:10px; color:var(--text-main); background:rgba(0,0,0,0.3); padding:10px; border-radius:4px; border-left: 2px solid var(--gold);">ยังไม่มีการเสนอชื่อในรอบนี้</div>
+        <div style="font-size:11px; margin-bottom:10px; color:var(--text-muted);">
+          คะแนนโหวต: <strong id="tellerVoteRatio" style="color:var(--gold-bright)">0 / 0</strong>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+          <div>
+            <label style="font-size: 9px; color: var(--text-muted);">ผู้เสนอชื่อ:</label>
+            <select id="nominatorSelect" style="width: 100%; background: #000; color: #fff; border: 1px solid var(--border-dim); padding: 5px; font-size: 11px; outline: none; border-radius: 4px;"></select>
+          </div>
+          <div>
+            <label style="font-size: 9px; color: var(--text-muted);">ผู้ถูกกล่าวหา:</label>
+            <select id="nomineeSelect" style="width: 100%; background: #000; color: #fff; border: 1px solid var(--border-dim); padding: 5px; font-size: 11px; outline: none; border-radius: 4px;"></select>
+          </div>
+          <button class="btn btn-gold" style="width: 100%;" onclick="submitNomination()">⚖️ เสนอชื่อ (Nominate)</button>
+        </div>
+        <button class="btn" style="width:100%;" onclick="nextPhase()">⏭️ จบเฟส (Next Phase)</button>
+      </div>
+
+      <h4 style="font-size:9px; font-family:'Cinzel'; color:var(--text-dim); margin-bottom:5px;">📜 บันทึกเหตุการณ์</h4>
+      <div class="log-view" id="logView"></div>
+    </div>
+  </aside>
+</div>
+
+<div class="context-menu" id="ctxMenu">
+  <div class="m-item" onclick="toggleLife()">💀 สลับสถานะ ตาย/รอด</div>
+  <div class="m-item" onclick="toggleBuff('is_poisoned')">🧪 ติดพิษ (Poison)</div>
+  <div class="m-item" onclick="toggleBuff('is_drunk')">🍺 เมาเหล้า (Drunk)</div>
+  <div class="m-item" style="color:var(--blood-bright); margin-top:5px; border-top:1px solid var(--border-dim);" onclick="delPlayer()">🚫 ลบออกจากห้อง</div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const ROOM = (urlParams.get('room') || 'DEMO').toUpperCase();
+  document.getElementById('roomDisplay').textContent = `ROOM: ${ROOM}`;
+
+  let sessionId = null;
+  let gameState = { phase: 'SETUP', round: 0, players: [] };
+  let activeId = null;
+  let ws = null;
+
+  async function init() {
+    try {
+      const res = await fetch(`/api/session/${ROOM}`);
+      const data = await res.json();
+      sessionId = data.session_id;
+      gameState.phase = data.current_phase;
+      gameState.round = data.day_number;
+      await sync();
+      connect();
+    } catch (e) { console.error("Init Error:", e); }
+  }
+
+  async function sync() {
+    if (!sessionId) return;
+    try {
+      const res = await fetch(`/api/grimoire?session_id=${sessionId}&role=storyteller`);
+      const data = await res.json();
+      gameState.phase = data.session.current_phase;
+      gameState.round = data.session.day_number;
+      gameState.players = data.players.map(p => {
+        return { ...p, posX: p.pos_x, posY: p.pos_y };
+      });
+      gameState.acted_player_ids = data.acted_player_ids || [];
+      
+      // Update active nomination display
+      if (data.active_nomination) {
+        document.getElementById('tellerNomStatus').innerHTML = `<b>⚖️ เสนอชื่อ:</b> [${data.active_nomination.nominator}] -> [${data.active_nomination.nominee}]`;
+        const aliveCount = gameState.players.filter(p => p.is_alive).length;
+        const needed = Math.ceil(aliveCount / 2);
+        document.getElementById('tellerVoteRatio').textContent = `${data.active_nomination.votes_received} / ${needed}`;
+      } else {
+        document.getElementById('tellerNomStatus').textContent = "ยังไม่มีการเสนอชื่อในรอบนี้";
+        document.getElementById('tellerVoteRatio').textContent = "0 / 0";
+      }
+      
+      // Update logs display
+      const logView = document.getElementById('logView');
+      if (logView && data.logs) {
+        logView.innerHTML = '';
+        data.logs.forEach(log => {
+          const d = document.createElement('div');
+          const timeStr = new Date(log.timestamp).toLocaleTimeString();
+          d.innerHTML = `<span style="color:#555;">${timeStr}</span> ${log.detail}`;
+          logView.appendChild(d);
+        });
+      }
+      
+      render();
+    } catch (e) { console.error("Sync Error:", e); }
+  }
+
+  function render() {
+    const reg = document.getElementById('registryList');
+    reg.innerHTML = gameState.players.map(p => {
+      const isActed = gameState.acted_player_ids.includes(p.id);
+      return `
+      <div class="registry-item" style="display:block; padding:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="registry-name" style="color:${p.alignment === 'GOOD' ? 'var(--good-bright)' : (p.alignment==='EVIL'?'var(--evil-bright)':'#fff')}">
+              ${p.name} ${!p.is_alive ? '💀' : ''} ${isActed ? '✅' : ''}
+            </div>
+            <span class="registry-role">${p.character_name || 'รอกด Deal Roles...'}</span>
+          </div>
+          <button class="btn-remove" onclick="delPlayerById('${p.id}', '${p.name}')">✕</button>
+        </div>
+        
+        <!-- God Mode Controls -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; margin-top:8px;">
+            <button onclick="toggleStatus(${p.id}, 'is_alive', ${!p.is_alive})" class="ctrl-btn ${p.is_alive ? 'active' : ''}" title="Alive/Dead">💀</button>
+            <button onclick="toggleStatus(${p.id}, 'is_poisoned', ${!p.is_poisoned})" class="ctrl-btn ${p.is_poisoned ? 'active' : ''}" title="Poisoned">🧪</button>
+            <button onclick="toggleStatus(${p.id}, 'is_drunk', ${!p.is_drunk})" class="ctrl-btn ${p.is_drunk ? 'active' : ''}" title="Drunk">🍺</button>
+        </div>
+      </div>
+    `}).join('');
+
+    const circle = document.getElementById('magicCircle');
+    circle.innerHTML = '';
+    const total = gameState.players.length;
+    const radius = 200;
+
+    gameState.players.forEach((p, i) => {
+      if (p.posX === null) {
+        const ang = (i * (2 * Math.PI / Math.max(1, total))) - (Math.PI / 2);
+        p.posX = Math.round(radius * Math.cos(ang));
+        p.posY = Math.round(radius * Math.sin(ang));
+      }
+      const t = document.createElement('div');
+      t.className = `token ${(p.alignment || 'unknown').toLowerCase()} ${!p.is_alive ? 'dead' : ''}`;
+      t.style.left = `calc(50% + ${p.posX}px)`;
+      t.style.top = `calc(50% + ${p.posY}px)`;
+      t.style.transform = 'translate(-50%, -50%)';
+      let badges = '';
+      if (p.is_poisoned) badges += '<span class="badge-s bg-p">P</span>';
+      if (p.is_drunk) badges += '<span class="badge-s bg-d">D</span>';
+      if (gameState.acted_player_ids && gameState.acted_player_ids.includes(p.id)) {
+        badges += '<span class="badge-s" style="background:#4caf50;color:#fff;">✓</span>';
+      }
+      t.innerHTML = `<div class="token-name">${p.name}</div><div class="token-role">${p.character_name || '...'}</div><div class="status-badges">${badges}</div>`;
+      t.oncontextmenu = (e) => { e.preventDefault(); openMenu(p.id, e.clientX, e.clientY); };
+      t.onmousedown = (e) => startDrag(e, p, t);
+      circle.appendChild(t);
+    });
+
+    document.getElementById('nightPanel').style.display = gameState.phase.includes('NIGHT') ? 'block' : 'none';
+    
+    const btnDeal = document.getElementById('btnDeal');
+    if (gameState.phase === 'SETUP') {
+        btnDeal.disabled = false;
+        btnDeal.textContent = '🎲 Deal Roles';
+    } else if (gameState.phase === 'GAME_OVER') {
+        btnDeal.disabled = false;
+        btnDeal.textContent = '🔄 Start New Game';
+    } else {
+        btnDeal.disabled = true;
+        btnDeal.textContent = '🎲 Deal Roles';
+    }
+
+    document.getElementById('pNight').className = gameState.phase.includes('NIGHT') ? 'phase-btn active' : 'phase-btn';
+    document.getElementById('pDay').className = gameState.phase.includes('DAY') ? 'phase-btn active' : 'phase-btn';
+    
+    // Update phase banner
+    const phaseNameMap = {
+        'SETUP': '⚔️ เตรียมเข้าสู่เกม (SETUP)',
+        'FIRST_NIGHT': '🌑 คืนแรก (FIRST NIGHT)',
+        'DAY_CHITCHAT': '☀️ ช่วงพูดคุย (DAY CHITCHAT)',
+        'DAY_NOMINATION': '⚖️ ช่วงเสนอชื่อ (NOMINATION)',
+        'DAY_VOTING': '🗳️ ช่วงลงคะแนน (VOTING)',
+        'NIGHT': '🌙 คืนถัดไป (NIGHT)',
+        'GAME_OVER': '🏁 จบเกม (GAME OVER)'
+    };
+    document.getElementById('currentPhaseName').textContent = phaseNameMap[gameState.phase] || gameState.phase;
+
+    if (gameState.phase.includes('NIGHT')) updateNightInfo();
+
+    // Update Nominate dropdowns
+    const nominatorSel = document.getElementById('nominatorSelect');
+    const nomineeSel = document.getElementById('nomineeSelect');
+    if (nominatorSel && nomineeSel) {
+      const optionsHTML = '<option value="">-- เลือกผู้เล่น --</option>' + 
+        gameState.players.map(p => `<option value="${p.id}">${p.name} (${p.is_alive ? 'รอด' : 'ตาย'})</option>`).join('');
+      nominatorSel.innerHTML = optionsHTML;
+      nomineeSel.innerHTML = optionsHTML;
+    }
+  }
+
+  async function startGame() {
+    if (gameState.players.length < 5) { alert("ต้องการอย่างน้อย 5 คนครับ"); return; }
+    if (!confirm("สุ่มบทบาทและเริ่มเกม?")) return;
+    await fetch('/api/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({session_id: sessionId}) });
+    await sync();
+  }
+
+  async function nextPhase() {
+    const res = await fetch('/api/next-phase', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({session_id: sessionId}) });
+    const data = await res.json();
+    addLog(`⏳ เปลี่ยนเฟส: ${data.new_phase}`);
+    await sync();
+  }
+
+  async function updateNightInfo() {
+    const res = await fetch(`/api/night-step?session_id=${sessionId}`);
+    const d = await res.json();
+    const info = document.getElementById('nightInfo');
+    if (d.status === 'active') info.innerHTML = `<strong>${d.character}</strong><br><small>(${d.players.join(', ')})</small><br><p style="margin-top:5px; opacity:0.7; font-size:10px;">${d.description}</p>`;
+    else info.innerHTML = "🌙 ลำดับการปลุกคืนนี้จบลงแล้ว";
+  }
+
+  async function advanceNight() {
+    await fetch('/api/night-next', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({session_id: sessionId}) });
+    await updateNightInfo();
+  }
+
+  function connect() {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = window.location.hostname.includes('onrender.com') ? `wss://botc-assistant.onrender.com/ws/${ROOM}` : `${proto}//${window.location.host}/ws/${ROOM}`;
+    ws = new WebSocket(url);
+    ws.onopen = () => { setOnline(true); addLog('🟢 เชื่อมต่อสำเร็จ'); sync(); };
+    ws.onclose = () => { setOnline(false); setTimeout(connect, 3000); };
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.event === 'state_update') { 
+        const oldPhase = gameState.phase;
+        gameState.phase = msg.data.phase; gameState.round = msg.data.round;
+        gameState.players = msg.data.players.map(p => {
+            return { ...p, posX: p.pos_x, posY: p.pos_y };
+        });
+        
+        if (oldPhase !== gameState.phase) {
+          addLog(`🔮 เฟสเปลี่ยนเป็น: ${gameState.phase} (วันที่ ${gameState.round})`);
+        }
+        
+        render();
+      }
+      if (msg.event === 'player_acted') {
+        addLog('🧙‍♂️ มีผู้เล่นส่งคำสั่งความสามารถลับยามค่ำคืน');
+        sync();
+      }
+      if (msg.event === 'new_nomination') {
+        document.getElementById('tellerNomStatus').innerHTML = `<b>⚖️ เสนอชื่อ:</b> [${msg.data.nominator}] -> [${msg.data.nominee}]`;
+        const aliveCount = gameState.players.filter(p => p.is_alive).length;
+        const needed = Math.ceil(aliveCount / 2);
+        document.getElementById('tellerVoteRatio').textContent = `0 / ${needed}`;
+        addLog(`⚖️ ${msg.data.nominator} กล่าวหา ${msg.data.nominee}`);
+      }
+      if (msg.event === 'vote_updated') {
+        const aliveCount = gameState.players.filter(p => p.is_alive).length;
+        const needed = Math.ceil(aliveCount / 2);
+        document.getElementById('tellerVoteRatio').textContent = `${msg.data.votes} / ${needed}`;
+        addLog(`🗳️ มีการโหวตเพิ่มเติม: ${msg.data.votes} เสียง`);
+      }
+      if (msg.event === 'phase_change') sync();
+      if (msg.event === 'game_over') alert(`🎉 จบเกม! ผู้ชนะคือ: ${msg.data.winner}`);
+    };
+  }
+
+  async function setPhase(phase) {
+    try {
+      const res = await fetch('/api/set-phase', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ session_id: sessionId, phase: phase })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        addLog(`⏳ เปลี่ยนเฟสเป็น: ${data.new_phase}`);
+        await sync();
+      }
+    } catch (e) {
+      console.error("Set phase error:", e);
+    }
+  }
+
+  async function toggleStatus(pid, field, value) {
+      try {
+          const body = { player_id: pid };
+          body[field] = value;
+          await fetch('/api/player/update', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(body)
+          });
+          await sync();
+          addLog(`🔧 [God Mode] ปรับปรุงสถานะผู้เล่น ID ${pid} (${field} = ${value})`);
+      } catch (e) {
+          console.error("Toggle status error:", e);
+      }
+  }
+
+  function startDrag(e, p, el) {
+    if (e.button !== 0) return;
+    let sX = e.clientX, sY = e.clientY, oX = p.posX, oY = p.posY;
+    const move = (me) => { p.posX = oX + (me.clientX - sX); p.posY = oY + (me.clientY - sY); el.style.left = `calc(50% + ${p.posX}px)`; el.style.top = `calc(50% + ${p.posY}px)`; };
+    const up = async () => { 
+      document.removeEventListener('mousemove', move); 
+      document.removeEventListener('mouseup', up); 
+      try {
+        await fetch('/api/player/update', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ player_id: p.id, pos_x: p.posX, pos_y: p.posY })
+        });
+      } catch (err) {
+        console.error("Save position error:", err);
+      }
+    };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  }
+
+  function broadcast() {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ event: 'state_update', data: { phase: gameState.phase, round: gameState.round, players: gameState.players } }));
+  }
+
+  function openMenu(id, x, y) { activeId = id; const m = document.getElementById('ctxMenu'); m.style.display = 'block'; m.style.left = x + 'px'; m.style.top = y + 'px'; }
+  document.onclick = () => document.getElementById('ctxMenu').style.display = 'none';
+  async function toggleLife() {
+    const p = gameState.players.find(x => x.id == activeId);
+    if (!p) return;
+    try {
+      await fetch('/api/player/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ player_id: p.id, is_alive: !p.is_alive })
+      });
+      await sync();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  async function toggleBuff(f) {
+    const p = gameState.players.find(x => x.id == activeId);
+    if (!p) return;
+    const body = { player_id: p.id };
+    body[f] = !p[f];
+    try {
+      await fetch('/api/player/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+      });
+      await sync();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  async function delPlayerById(id, n) {
+    if (confirm(`ลบ ${n}?`)) {
+      try {
+        await fetch(`/api/player/${id}`, { method: 'DELETE' });
+        await sync();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+  function delPlayer() { if (activeId) delPlayerById(activeId, "คนนี้"); }
+  async function sendNarr() { const txt = document.getElementById('narrInput').value; if (!txt) return; await fetch('/api/narrate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({room_code: ROOM, text: txt}) }); document.getElementById('narrInput').value = ''; addLog(`📢: ${txt}`); }
+  async function submitNomination() {
+    const nominatorId = document.getElementById('nominatorSelect').value;
+    const nomineeId = document.getElementById('nomineeSelect').value;
+    if (!nominatorId || !nomineeId) { alert("กรุณาเลือกผู้เสนอชื่อและผู้ถูกกล่าวหา"); return; }
+    if (nominatorId === nomineeId) { alert("ผู้เสนอชื่อและผู้ถูกกล่าวหาต้องไม่เป็นคนเดียวกัน"); return; }
+    
+    try {
+      const res = await fetch('/api/nominate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          session_id: sessionId,
+          nominator_id: parseInt(nominatorId),
+          nominee_id: parseInt(nomineeId)
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'virgin_triggered') {
+        addLog("🔔 Virgin Triggered! วันนี้สิ้นสุดลงทันที");
+        alert("Virgin ทำงาน! ผู้เสนอชื่อถูกประหารทันทีและจบวัน");
+      } else if (data.status === 'ALREADY_DEAD') {
+        alert("❌ ผู้เล่นที่เสียชีวิตแล้วไม่สามารถเสนอชื่อได้");
+      } else if (data.status === 'ALREADY_NOMINATED') {
+        alert("❌ ผู้เล่นคนนี้เสนอชื่อไปแล้วในวันนี้ (เสนอได้วันละ 1 ครั้ง)");
+      } else if (data.status === 'NOMINEE_ALREADY_TARGETED') {
+        alert("❌ ผู้ถูกเสนอชื่อคนนี้ถูกเลือกไปแล้วในวันนี้ (ถูกเสนอชื่อได้วันละ 1 ครั้ง)");
+      } else if (data.status === 'success') {
+        addLog(`⚖️ เสนอชื่อสำเร็จ: ${data.nomination_id}`);
+      } else {
+        alert("ไม่สามารถเสนอชื่อได้");
+      }
+      await sync();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  function addLog(t) { 
+    const v = document.getElementById('logView'); 
+    const d = document.createElement('div'); 
+    d.className = 'log-item';
+    
+    // Categorize log for styling
+    if (t.includes('🔮') || t.includes('⚖️') || t.includes('🏆') || t.includes('🏁')) d.classList.add('summary');
+    if (t.includes('💀') || t.includes('เสียชีวิต') || t.includes('ร่างของ')) d.classList.add('death');
+    if (t.includes('⏳') || t.includes('เฟส')) d.classList.add('phase');
+
+    d.innerHTML = `<span style="color:#555;">${new Date().toLocaleTimeString()}</span> ${t}`; 
+    v.insertBefore(d, v.firstChild); 
+  }
+  function setOnline(b) { document.getElementById('wsDot').className = b ? 'status-dot online' : 'status-dot'; document.getElementById('wsText').textContent = b ? 'Online' : 'Offline'; }
+
+  init();
+</script>
+</body>
+</html>
